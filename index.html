@@ -921,28 +921,37 @@ async function doLogin(e) {
       return;
     }
 
-    // Fetch profile
-    const { data: profile, error: profileErr } = await sb
-      .from('arc_profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single();
-
-    if (profileErr || !profile) {
-      await sb.auth.signOut();
-      loading(false);
-      showMsg('loginMsg', 'Account not found. Contact your administrator.', 'error');
-      return;
-    }
-
-    STATE.user = data.user;
-    STATE.profile = profile;
-    loading(false);
-    routeUser(profile);
+    const profile = await loadCurrentUserProfile(data.user, true);
+    if (!profile) return;
   } catch (e) {
     loading(false);
     showMsg('loginMsg', 'Error: ' + e.message, 'error');
   }
+}
+
+async function loadCurrentUserProfile(user, signOutOnFailure = false) {
+  const { data: profile, error: profileErr } = await sb
+    .from('arc_profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (profileErr || !profile) {
+    if (signOutOnFailure) await sb.auth.signOut();
+    loading(false);
+    showMsg(
+      'loginMsg',
+      profileErr?.message || 'Account not found. Contact your administrator.',
+      'error'
+    );
+    return null;
+  }
+
+  STATE.user = user;
+  STATE.profile = profile;
+  loading(false);
+  routeUser(profile);
+  return profile;
 }
 
 async function doLogout() {
@@ -1801,10 +1810,10 @@ window.addEventListener('load', async () => {
 
   try {
     const { data: { session } } = await sb.auth.getSession();
-    loading(false);
-
     if (session) {
-      await doLogin({ preventDefault: () => {} });
+      await loadCurrentUserProfile(session.user);
+    } else {
+      loading(false);
     }
   } catch (e) {
     loading(false);
