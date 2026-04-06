@@ -58,6 +58,26 @@ body {
   z-index: 50;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar-logo-container {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.topbar-logo-icon {
+  width: 100%;
+  height: 100%;
+}
+
 .topbar-brand {
   display: flex;
   align-items: center;
@@ -267,9 +287,28 @@ body {
 
 .auth-header {
   margin-bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
-.auth-logo {
+.auth-logo-container {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 16px;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-logo-icon {
+  width: 100%;
+  height: 100%;
+}
+
+.auth-logo-text {
   font-family: 'Space Mono', monospace;
   font-size: 22px;
   font-weight: 700;
@@ -759,7 +798,17 @@ body {
   <div class="page-body">
     <div class="auth-card">
       <div class="auth-header">
-        <div class="auth-logo">⏱ APEXIZ</div>
+        <div class="auth-logo-container">
+          <svg class="auth-logo-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <!-- Logo: Clock/Time symbol -->
+            <circle cx="60" cy="60" r="55" fill="none" stroke="currentColor" stroke-width="3"/>
+            <circle cx="60" cy="60" r="8" fill="currentColor"/>
+            <line x1="60" y1="60" x2="60" y2="25" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <line x1="60" y1="60" x2="85" y2="60" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <path d="M 60 60 Q 75 75 85 85" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="auth-logo-text">⏱ APEXIZ</div>
         <div class="auth-title" id="authTitle">Sign In</div>
         <div class="auth-sub">Annual Resource Contract Hours Tracker</div>
       </div>
@@ -783,7 +832,19 @@ body {
 <!-- ══ DASHBOARD PAGE ══ -->
 <div id="dashPage" class="page">
   <div class="topbar">
-    <div class="topbar-brand">APEXIZ ARC Hours</div>
+    <div class="topbar-left">
+      <div class="topbar-logo-container">
+        <svg class="topbar-logo-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+          <!-- Logo: Clock/Time symbol -->
+          <circle cx="60" cy="60" r="55" fill="none" stroke="currentColor" stroke-width="3"/>
+          <circle cx="60" cy="60" r="8" fill="currentColor"/>
+          <line x1="60" y1="60" x2="60" y2="25" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          <line x1="60" y1="60" x2="85" y2="60" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          <path d="M 60 60 Q 75 75 85 85" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="topbar-brand">APEXIZ ARC Hours</div>
+    </div>
     <div class="topbar-right">
       <div class="user-badge">
         <div class="user-avatar" id="userAvatar">?</div>
@@ -803,6 +864,7 @@ body {
       
       <div id="adminNav" style="display: none;">
         <div class="nav-section">Admin</div>
+        <button class="nav-item" id="navUsers" onclick="showPanel('users')">👥 Users</button>
         <button class="nav-item" id="navCustomers" onclick="showPanel('customers')">🏢 Customers</button>
         <button class="nav-item" id="navContracts" onclick="showPanel('contracts')">📋 Contracts</button>
         <button class="nav-item" id="navTimeLogs" onclick="showPanel('timelogs')">⏱ Time Logs</button>
@@ -921,37 +983,28 @@ async function doLogin(e) {
       return;
     }
 
-    const profile = await loadCurrentUserProfile(data.user, true);
-    if (!profile) return;
+    // Fetch profile
+    const { data: profile, error: profileErr } = await sb
+      .from('arc_profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profileErr || !profile) {
+      await sb.auth.signOut();
+      loading(false);
+      showMsg('loginMsg', 'Account not found. Contact your administrator.', 'error');
+      return;
+    }
+
+    STATE.user = data.user;
+    STATE.profile = profile;
+    loading(false);
+    routeUser(profile);
   } catch (e) {
     loading(false);
     showMsg('loginMsg', 'Error: ' + e.message, 'error');
   }
-}
-
-async function loadCurrentUserProfile(user, signOutOnFailure = false) {
-  const { data: profile, error: profileErr } = await sb
-    .from('arc_profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (profileErr || !profile) {
-    if (signOutOnFailure) await sb.auth.signOut();
-    loading(false);
-    showMsg(
-      'loginMsg',
-      profileErr?.message || 'Account not found. Contact your administrator.',
-      'error'
-    );
-    return null;
-  }
-
-  STATE.user = user;
-  STATE.profile = profile;
-  loading(false);
-  routeUser(profile);
-  return profile;
 }
 
 async function doLogout() {
@@ -993,6 +1046,7 @@ async function showPanel(name) {
   main.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div></div>';
 
   if (name === 'dashboard') await renderDashboard();
+  else if (name === 'users') await renderUsers();
   else if (name === 'customers') await renderCustomers();
   else if (name === 'contracts') await renderContracts();
   else if (name === 'timelogs') await renderTimeLogs();
@@ -1094,7 +1148,195 @@ async function renderDashboard() {
   }
 }
 
-/* ── CUSTOMERS (ADMIN) ── */
+/* ── USERS (ADMIN) ── */
+async function renderUsers() {
+  const { data: profiles } = await sb.from('arc_profiles').select('*').order('created_at', { ascending: false });
+
+  let html = `
+    <div class="panel-title">👥 User Management</div>
+    <div class="btn-group">
+      <button class="btn btn-primary" onclick="openAddUserModal('internal')">➕ Add Internal Team Member</button>
+      <button class="btn btn-primary" onclick="openAddUserModal('customer')">➕ Add Customer User</button>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>Company/Team</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+  `;
+
+  if (profiles && profiles.length > 0) {
+    html += profiles.map(p => `
+      <tr>
+        <td><strong>${p.name}</strong></td>
+        <td>${p.email || '—'}</td>
+        <td><span class="badge active">${p.role.toUpperCase()}</span></td>
+        <td>${p.company_name || p.team_name || '—'}</td>
+        <td><span class="badge active">Active</span></td>
+        <td>
+          <button class="btn btn-sm btn-secondary" onclick="editUser('${p.id}')">Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteUser('${p.id}')">Delete</button>
+        </td>
+      </tr>
+    `).join('');
+  } else {
+    html += '<tr><td colspan="6" style="text-align:center;padding:40px">No users yet.</td></tr>';
+  }
+
+  html += '</tbody></table></div>';
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+async function openAddUserModal(type) {
+  const isInternal = type === 'internal';
+  
+  let html = `
+    <div class="modal-title">
+      <span>${isInternal ? '➕ Add Internal Team Member' : '➕ Add Customer User'}</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-card">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="userFullName" class="form-input" placeholder="John Doe">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" id="userEmail" class="form-input" placeholder="john@company.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="userPassword" class="form-input" placeholder="Temporary password">
+      </div>
+  `;
+
+  if (isInternal) {
+    html += `
+      <div class="form-group">
+        <label class="form-label">Team Name (optional)</label>
+        <input type="text" id="userTeamName" class="form-input" placeholder="Weld Inspection Team">
+      </div>
+    `;
+  } else {
+    const { data: customers } = await sb.from('arc_customers').select('id, company_name');
+    let custOptions = '<option value="">— Select Customer —</option>';
+    customers?.forEach(c => {
+      custOptions += `<option value="${c.id}">${c.company_name}</option>`;
+    });
+
+    html += `
+      <div class="form-group">
+        <label class="form-label">Company</label>
+        <select id="userCustomerId" class="form-select">${custOptions}</select>
+      </div>
+    `;
+  }
+
+  html += `
+      <button class="btn btn-primary" onclick="saveNewUser('${type}')">Create User →</button>
+      <div id="userMsg" class="auth-msg"></div>
+    </div>
+  `;
+
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+async function saveNewUser(type) {
+  const name = document.getElementById('userFullName').value.trim();
+  const email = document.getElementById('userEmail').value.trim();
+  const password = document.getElementById('userPassword').value;
+
+  if (!name || !email || !password) {
+    showMsg('userMsg', 'Please fill in all required fields', 'error');
+    return;
+  }
+
+  if (password.length < 6) {
+    showMsg('userMsg', 'Password must be at least 6 characters', 'error');
+    return;
+  }
+
+  loading(true, 'Creating user account…');
+
+  try {
+    // Create auth account
+    const { data: authData, error: authErr } = await sb.auth.signUp({
+      email: email,
+      password: password
+    });
+
+    if (authErr) {
+      loading(false);
+      showMsg('userMsg', 'Error creating account: ' + authErr.message, 'error');
+      return;
+    }
+
+    const userId = authData.user?.id;
+    if (!userId) {
+      loading(false);
+      showMsg('userMsg', 'Failed to create user', 'error');
+      return;
+    }
+
+    // Create profile
+    let profileData = {
+      id: userId,
+      name: name,
+      email: email,
+      role: type
+    };
+
+    if (type === 'internal') {
+      const teamName = document.getElementById('userTeamName')?.value.trim();
+      if (teamName) profileData.team_name = teamName;
+    } else {
+      const customerId = document.getElementById('userCustomerId').value;
+      if (!customerId) {
+        await sb.auth.admin.deleteUser(userId);
+        loading(false);
+        showMsg('userMsg', 'Please select a customer', 'error');
+        return;
+      }
+      profileData.customer_id = customerId;
+    }
+
+    const { error: profileErr } = await sb.from('arc_profiles').insert(profileData);
+
+    if (profileErr) {
+      // Clean up auth user if profile fails
+      await sb.auth.signOut();
+      loading(false);
+      showMsg('userMsg', 'Error creating profile: ' + profileErr.message, 'error');
+      return;
+    }
+
+    loading(false);
+    showMsg('userMsg', '✓ User created successfully', 'success');
+    
+    setTimeout(() => {
+      closeModal();
+      showPanel('users');
+    }, 1500);
+
+  } catch (e) {
+    loading(false);
+    showMsg('userMsg', 'Unexpected error: ' + e.message, 'error');
+  }
+}
+
+async function deleteUser(id) {
+  if (!confirm('Delete this user? This cannot be undone.')) return;
+
+  loading(true, 'Deleting user…');
+  
+  // Delete profile first
+  await sb.from('arc_profiles').delete().eq('id', id);
+  
+  loading(false);
+  showPanel('users');
+}
 async function renderCustomers() {
   const { data: customers } = await sb.from('arc_customers').select('*').order('created_at', { ascending: false });
 
@@ -1104,7 +1346,7 @@ async function renderCustomers() {
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Company</th><th>Contact</th><th>Email</th><th>Status</th><th>Actions</th></tr>
+          <tr><th>Company</th><th>Contact</th><th>Email</th><th>Status</th><th>Assigned Team</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -1115,15 +1357,16 @@ async function renderCustomers() {
         <td><strong>${c.company_name}</strong></td>
         <td>${c.contact_person || '—'}</td>
         <td>${c.email || '—'}</td>
-        <td><span class="badge ${c.status || 'active'}">${(c.status || 'active').toUpperCase()}</span></td>
+        <td><span class="badge active">${(c.status || 'active').toUpperCase()}</span></td>
+        <td>${c.assigned_team || '—'}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="editCustomer('${c.id}')">Edit</button>
+          <button class="btn btn-sm btn-secondary" onclick="assignTeamToCustomer('${c.id}','${c.company_name}')">Assign Team</button>
           <button class="btn btn-sm btn-danger" onclick="deleteCustomer('${c.id}')">Delete</button>
         </td>
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="5" style="text-align:center;padding:40px">No customers yet.</td></tr>';
+    html += '<tr><td colspan="6" style="text-align:center;padding:40px">No customers yet.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -1810,10 +2053,10 @@ window.addEventListener('load', async () => {
 
   try {
     const { data: { session } } = await sb.auth.getSession();
+    loading(false);
+
     if (session) {
-      await loadCurrentUserProfile(session.user);
-    } else {
-      loading(false);
+      await doLogin({ preventDefault: () => {} });
     }
   } catch (e) {
     loading(false);
