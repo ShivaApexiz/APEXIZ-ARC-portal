@@ -1293,6 +1293,7 @@ async function saveNewUser(type) {
   const email = document.getElementById('userEmail').value.trim();
   const password = document.getElementById('userPassword').value;
   const customerId = type === 'customer' ? document.getElementById('userCustomerId').value : null;
+  const teamName = type === 'internal' ? document.getElementById('userTeamName')?.value.trim() : null;
 
   if (!name || !email || !password) {
     showMsg('userMsg', 'Please fill in all required fields', 'error');
@@ -1323,7 +1324,15 @@ async function saveNewUser(type) {
     // Create auth account without replacing the admin browser session.
     const { data: authData, error: authErr } = await signupClient.auth.signUp({
       email: email,
-      password: password
+      password: password,
+      options: {
+        data: {
+          name: name,
+          role: type,
+          team_name: teamName || null,
+          customer_id: customerId || null
+        }
+      }
     });
 
     if (authErr) {
@@ -1336,36 +1345,6 @@ async function saveNewUser(type) {
     if (!userId) {
       loading(false);
       showMsg('userMsg', 'Failed to create user', 'error');
-      return;
-    }
-
-    // Create profile
-    let profileData = {
-      id: userId,
-      name: name,
-      email: email,
-      role: type
-    };
-
-    if (type === 'internal') {
-      const teamName = document.getElementById('userTeamName')?.value.trim();
-      if (teamName) profileData.team_name = teamName;
-    } else {
-      profileData.customer_id = customerId;
-    }
-
-    const { error: profileErr } = await sb.rpc('create_arc_profile', {
-      profile_id: profileData.id,
-      profile_name: profileData.name,
-      profile_email: profileData.email,
-      profile_role: profileData.role,
-      profile_team_name: profileData.team_name || null,
-      profile_customer_id: profileData.customer_id || null
-    });
-
-    if (profileErr) {
-      loading(false);
-      showMsg('userMsg', 'Error creating profile: ' + profileErr.message, 'error');
       return;
     }
 
