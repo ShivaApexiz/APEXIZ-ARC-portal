@@ -194,8 +194,8 @@ body {
 .sidebar {
   width: 200px;
   min-width: 200px;
-  background: var(--white);
-  border-right: 1px solid var(--neutral-200);
+  background: var(--dark);
+  border-right: 1px solid rgba(255,255,255,0.08);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -211,7 +211,7 @@ body {
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: var(--neutral-500);
+  color: rgba(255,255,255,0.55);
   margin: 14px 0 8px;
   display: flex;
   align-items: center;
@@ -235,7 +235,7 @@ body {
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
-  color: var(--neutral-700);
+  color: rgba(255,255,255,0.88);
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
@@ -244,7 +244,7 @@ body {
   gap: 8px;
 }
 
-.nav-item:hover { background: var(--primary-light); color: var(--primary); }
+.nav-item:hover { background: rgba(255,85,0,0.16); color: var(--white); }
 .nav-item.active { background: var(--primary); color: var(--white); }
 
 .nav-divider {
@@ -275,10 +275,169 @@ body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
 .main-content::-webkit-scrollbar { width: 6px; }
 .main-content::-webkit-scrollbar-thumb { background: var(--neutral-300); }
+
+#dashPage .topbar {
+  background: var(--dark);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  box-shadow: none;
+}
+
+#dashPage .topbar-brand,
+#dashPage .site-update-stamp {
+  color: var(--white);
+}
+
+#dashPage .site-update-stamp {
+  border-left-color: rgba(255,255,255,0.18);
+  opacity: 0.72;
+}
+
+#dashPage .user-badge {
+  background: rgba(255,255,255,0.1);
+  color: var(--white);
+}
+
+#dashPage .logout-btn {
+  border-color: rgba(255,255,255,0.22);
+  color: var(--white);
+}
+
+#dashPage .footer {
+  display: none;
+}
+
+.dashboard-shell-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.dashboard-section {
+  background: var(--white);
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+  overflow: hidden;
+}
+
+.dashboard-section-header {
+  padding: 16px 18px 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.1fr);
+}
+
+.overview-pane {
+  padding: 12px 18px 18px;
+}
+
+.overview-pane + .overview-pane {
+  border-left: 1px solid var(--neutral-200);
+}
+
+.chart-row {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.donut-chart {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: conic-gradient(var(--primary) 0 40%, var(--info) 40% 68%, var(--success) 68% 84%, var(--warning) 84% 100%);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.donut-center {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: var(--white);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-weight: 800;
+}
+
+.donut-center span {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--neutral-500);
+  margin-top: 3px;
+}
+
+.chart-legend {
+  display: grid;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--neutral-700);
+}
+
+.legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.bar-list {
+  display: grid;
+  gap: 13px;
+}
+
+.bar-item {
+  display: grid;
+  grid-template-columns: 120px 1fr 48px;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.bar-track {
+  height: 14px;
+  background: var(--neutral-100);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--warning));
+  border-radius: 4px;
+}
+
+.table-section-body {
+  padding: 0 0 8px;
+}
+
+@media (max-width: 980px) {
+  .dashboard-shell-grid,
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-pane + .overview-pane {
+    border-left: none;
+    border-top: 1px solid var(--neutral-200);
+  }
+}
 
 /* ── AUTH PAGE ── */
 #authPage .page-body {
@@ -1132,7 +1291,7 @@ async function showPanel(name) {
   const main = document.getElementById('mainContent');
   main.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div></div>';
 
-  if (name === 'dashboard') await renderDashboard();
+  if (name === 'dashboard') await renderDashboardV2();
   else if (name === 'users') await renderUsers();
   else if (name === 'customers') await renderCustomers();
   else if (name === 'contracts') await renderContracts();
@@ -1146,6 +1305,151 @@ async function showPanel(name) {
 }
 
 /* ── DASHBOARD ── */
+async function renderDashboardV2() {
+  const main = document.getElementById('mainContent');
+  const isCompany = STATE.profile.role === 'customer';
+  const companyId = STATE.profile.customer_id;
+
+  let contractQuery = sb
+    .from('arc_contracts')
+    .select('*, arc_customers(company_name), arc_projects(id, project_name), arc_time_logs(hours, work_date, task_name, project_id, arc_projects(project_name), arc_profiles(name))')
+    .order('start_date', { ascending: false });
+
+  if (isCompany) contractQuery = contractQuery.eq('customer_id', companyId);
+
+  const [{ data: contracts }, { data: companies }, { data: projects }, { data: logs }] = await Promise.all([
+    contractQuery,
+    isCompany ? Promise.resolve({ data: [] }) : sb.from('arc_customers').select('id'),
+    isCompany
+      ? sb.from('arc_projects').select('*, arc_contracts(customer_id)').eq('arc_contracts.customer_id', companyId)
+      : sb.from('arc_projects').select('*'),
+    isCompany
+      ? sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(customer_id, arc_customers(company_name)), arc_profiles(name)').eq('arc_contracts.customer_id', companyId).order('work_date', { ascending: false }).limit(5)
+      : sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(arc_customers(company_name)), arc_profiles(name)').order('work_date', { ascending: false }).limit(5)
+  ]);
+
+  const safeContracts = contracts || [];
+  const safeLogs = logs || [];
+  const totalContracted = safeContracts.reduce((sum, c) => sum + (c.total_hours || 0), 0);
+  const allContractLogs = safeContracts.flatMap(c => c.arc_time_logs || []);
+  const usedHours = allContractLogs.reduce((sum, log) => sum + (log.hours || 0), 0);
+
+  const contractUsedHours = safeContracts
+    .map(c => ({
+      name: c.arc_customers?.company_name || 'Contract',
+      hours: (c.arc_time_logs || []).reduce((sum, log) => sum + (log.hours || 0), 0)
+    }))
+    .sort((a, b) => b.hours - a.hours)
+    .slice(0, 5);
+
+  const projectHoursMap = {};
+  allContractLogs.forEach(log => {
+    const projectName = log.arc_projects?.project_name || 'Unassigned';
+    projectHoursMap[projectName] = (projectHoursMap[projectName] || 0) + (log.hours || 0);
+  });
+
+  const topProjects = Object.entries(projectHoursMap)
+    .map(([name, hours]) => ({ name, hours }))
+    .sort((a, b) => b.hours - a.hours)
+    .slice(0, 5);
+
+  const maxProjectHours = Math.max(...topProjects.map(p => p.hours), 1);
+
+  const metricCards = isCompany
+    ? [
+        ['My Contracts', safeContracts.length, 'Active Contracts'],
+        ['Projects', projects?.length || 0, 'Total Projects'],
+        ['Logged Hours', `${formatCurrency(usedHours)}h`, 'Total Used Hours']
+      ]
+    : [
+        ['Companies', companies?.length || 0, 'Total Registered'],
+        ['Contracts', safeContracts.length, 'Total Contracts'],
+        ['Projects', projects?.length || 0, 'Total Projects'],
+        ['Logged Hours', `${formatCurrency(usedHours)}h`, 'Total Used Hours']
+      ];
+
+  const recentRows = safeLogs.length
+    ? safeLogs.map(log => `
+      <tr>
+        <td>${formatDate(log.work_date)}</td>
+        ${isCompany ? '' : `<td>${log.arc_contracts?.arc_customers?.company_name || '—'}</td>`}
+        <td>${log.arc_projects?.project_name || '—'}</td>
+        <td>${formatCurrency(log.hours)}h</td>
+        <td>${log.arc_profiles?.name || 'Admin'}</td>
+      </tr>
+    `).join('')
+    : `<tr><td colspan="${isCompany ? 4 : 5}" style="text-align:center;padding:28px">No time logs yet.</td></tr>`;
+
+  const contractRows = safeContracts.length
+    ? safeContracts.slice(0, 6).map(c => {
+      const used = (c.arc_time_logs || []).reduce((sum, log) => sum + (log.hours || 0), 0);
+      return `
+        <tr>
+          <td>${c.arc_customers?.company_name || '—'}</td>
+          <td>${formatDate(c.start_date)}</td>
+          <td>${formatDate(c.end_date)}</td>
+          <td>${c.arc_projects?.length || 0}</td>
+          <td>${formatCurrency(used)}h</td>
+        </tr>
+      `;
+    }).join('')
+    : '<tr><td colspan="5" style="text-align:center;padding:28px">No contracts yet.</td></tr>';
+
+  main.innerHTML = `
+    <div class="dashboard-shell-grid">
+      ${metricCards.map(card => `
+        <div class="card">
+          <div class="card-label">${card[0]}</div>
+          <div class="card-value">${card[1]}</div>
+          <div class="card-sub">${card[2]}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="dashboard-section">
+      <div class="dashboard-section-header">Overview</div>
+      <div class="overview-grid">
+        <div class="overview-pane">
+          <div class="card-label">Hours by Contract</div>
+          <div class="chart-row">
+            <div class="donut-chart"><div class="donut-center">${formatCurrency(usedHours)}h<span>Total</span></div></div>
+            <div class="chart-legend">
+              ${contractUsedHours.length ? contractUsedHours.map((c, i) => `<div><span class="legend-dot" style="background:${['var(--primary)','var(--info)','var(--success)','var(--warning)','var(--neutral-500)'][i]}"></span>${c.name} ${formatCurrency(c.hours)}h</div>`).join('') : '<div>No logged hours yet.</div>'}
+            </div>
+          </div>
+        </div>
+        <div class="overview-pane">
+          <div class="card-label">Hours by Project (Top 5)</div>
+          <div class="bar-list">
+            ${topProjects.length ? topProjects.map(p => `<div class="bar-item"><span>${p.name}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max((p.hours / maxProjectHours) * 100, 6)}%"></div></div><strong>${formatCurrency(p.hours)}h</strong></div>`).join('') : '<div class="empty-state-text">No project logs yet.</div>'}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-section">
+      <div class="dashboard-section-header">Recent Time Logs</div>
+      <div class="table-section-body">
+        <table class="data-table">
+          <thead><tr><th>Date</th>${isCompany ? '' : '<th>Company</th>'}<th>Project</th><th>Logged Hours</th><th>Logged By</th></tr></thead>
+          <tbody>${recentRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dashboard-section">
+      <div class="dashboard-section-header">${isCompany ? 'My Contracts' : 'All Contracts'}</div>
+      <div class="table-section-body">
+        <table class="data-table">
+          <thead><tr><th>Company</th><th>Start Date</th><th>End Date</th><th>Total Projects</th><th>Used Hours</th></tr></thead>
+          <tbody>${contractRows}</tbody>
+        </table>
+      </div>
+      ${isCompany ? '<div class="alert info show" style="margin:12px 16px 16px">Contract used hours are the sum of all used project hours in a contract.</div>' : ''}
+    </div>
+  `;
+}
+
 async function renderDashboard() {
   const main = document.getElementById('mainContent');
   const role = STATE.profile.role;
