@@ -61,12 +61,12 @@ body {
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
 .topbar-logo-container {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,6 +98,18 @@ body {
 
 .topbar-brand::before {
   display: none;
+}
+
+.site-update-stamp {
+  margin-left: 10px;
+  padding-left: 14px;
+  border-left: 1px solid var(--neutral-200);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--neutral-500);
+  white-space: nowrap;
 }
 
 .topbar-right {
@@ -809,6 +821,8 @@ body {
         <img class="topbar-logo-icon" src="https://raw.githubusercontent.com/ShivaApexiz/APEXIZ-ARC-portal/refs/heads/main/Logo.png" alt="APEXIZ logo">
       </div>
       <div class="topbar-brand">APEXIZ ARC Hours</div>
+      <!-- WEBSITE_UPDATE_TIMESTAMP: remove this stamp after verification if desired. -->
+      <div class="site-update-stamp">Updated 22 Apr 2026, 13:42 IST</div>
     </div>
     <div></div>
   </div>
@@ -863,6 +877,8 @@ body {
         </svg>
       </div>
       <div class="topbar-brand">APEXIZ ARC Hours</div>
+      <!-- WEBSITE_UPDATE_TIMESTAMP: remove this stamp after verification if desired. -->
+      <div class="site-update-stamp">Updated 22 Apr 2026, 13:42 IST</div>
     </div>
     <div class="topbar-right">
       <div class="user-badge">
