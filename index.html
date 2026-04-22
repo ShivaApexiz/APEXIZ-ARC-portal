@@ -1367,10 +1367,15 @@ async function deleteUser(id) {
 
   loading(true, 'Deleting user…');
   
-  // Delete profile first
-  await sb.from('arc_profiles').delete().eq('id', id);
+  const { error } = await sb.rpc('delete_arc_user', { target_user_id: id });
   
   loading(false);
+
+  if (error) {
+    alert('Error deleting user: ' + error.message);
+    return;
+  }
+
   showPanel('users');
 }
 async function editUser(id) {
