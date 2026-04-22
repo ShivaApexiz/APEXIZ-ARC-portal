@@ -614,6 +614,16 @@ body {
 .btn-secondary { background: var(--neutral-100); color: var(--neutral-700); border: 1px solid var(--neutral-200); }
 .btn-secondary:hover { background: var(--neutral-200); }
 
+.btn-tool {
+  background: var(--dark);
+  color: var(--white);
+  border: 1px solid var(--dark);
+}
+.btn-tool:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
 .btn-danger { background: var(--critical); color: var(--white); }
 .btn-danger:hover { background: #A30000; }
 
@@ -1200,7 +1210,7 @@ async function renderUsers() {
   let html = `
     <div class="panel-title">👥 User Management</div>
     <div class="btn-group">
-      <button class="btn btn-secondary" onclick="openInternalTeamsModal()">Manage Internal Teams</button>
+      <button class="btn btn-tool" onclick="openInternalTeamsModal()">Manage Internal Teams</button>
       <button class="btn btn-primary" onclick="openAddUserModal('internal')">➕ Add Internal Team Member</button>
       <button class="btn btn-primary" onclick="openAddUserModal('customer')">➕ Add Customer User</button>
     </div>
@@ -1304,7 +1314,23 @@ async function openInternalTeamsModal() {
     .order('name');
 
   if (error) {
-    alert('Unable to load internal teams: ' + error.message);
+    const modal = document.getElementById('modalContent');
+    modal.innerHTML = `
+      <div class="modal-title">
+        <span>Internal Teams Setup Required</span>
+        <button class="modal-close" onclick="closeModal()">x</button>
+      </div>
+      <div class="form-card">
+        <div class="alert warning show">
+          Run supabase_internal_teams.sql in Supabase SQL Editor, then refresh this page.
+        </div>
+        <div class="form-group">
+          <label class="form-label">Supabase Message</label>
+          <textarea class="form-textarea" readonly>${error.message}</textarea>
+        </div>
+      </div>
+    `;
+    document.getElementById('modalOverlay').classList.add('open');
     return;
   }
 
