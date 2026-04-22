@@ -1151,11 +1151,11 @@ async function renderDashboard() {
   const role = STATE.profile.role;
 
   if (role === 'customer') {
-    // Customer dashboard
+    // Company dashboard
     const { data: contracts } = await sb
       .from('arc_contracts')
       .select('*')
-      .eq('customer_id', STATE.user.id)
+      .eq('customer_id', STATE.profile.customer_id)
       .order('start_date', { ascending: false });
 
     let html = '<div class="panel-title">📊 Dashboard</div>';
@@ -1839,7 +1839,7 @@ async function deleteCustomer(id) {
 async function renderContracts() {
   const { data: contracts } = await sb
     .from('arc_contracts')
-    .select('*, arc_customers(company_name)')
+    .select('*, arc_customers(company_name), arc_projects(id, project_name), arc_time_logs(hours)')
     .order('start_date', { ascending: false });
 
   let html = `
@@ -1848,7 +1848,7 @@ async function renderContracts() {
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Hours</th><th>Actions</th></tr>
+          <tr><th>Company</th><th>Start Date</th><th>End Date</th><th>Total Hours</th><th>Used Hours</th><th>Projects</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -1860,14 +1860,16 @@ async function renderContracts() {
         <td>${formatDate(c.start_date)}</td>
         <td>${formatDate(c.end_date)}</td>
         <td>${formatCurrency(c.total_hours)}</td>
+        <td>${formatCurrency(c.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0)}</td>
+        <td>${c.arc_projects?.length || 0}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="editContract('${c.id}')">Edit</button>
+          <button class="btn btn-sm btn-secondary" onclick="openProjectsModal('${c.id}')">Projects</button>
           <button class="btn btn-sm btn-danger" onclick="deleteContract('${c.id}')">Delete</button>
         </td>
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="5" style="text-align:center;padding:40px">No contracts yet.</td></tr>';
+    html += '<tr><td colspan="7" style="text-align:center;padding:40px">No contracts yet.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -1877,7 +1879,7 @@ async function renderContracts() {
 async function openContractModal() {
   const { data: customers } = await sb.from('arc_customers').select('id, company_name');
 
-  let custOptions = '<option value="">— Select Customer —</option>';
+  let custOptions = '<option value="">Select Company</option>';
   customers?.forEach(c => {
     custOptions += `<option value="${c.id}">${c.company_name}</option>`;
   });
@@ -1890,7 +1892,7 @@ async function openContractModal() {
     </div>
     <div class="form-card">
       <div class="form-group">
-        <label class="form-label">Customer</label>
+        <label class="form-label">Company</label>
         <select id="contractCust" class="form-select">${custOptions}</select>
       </div>
       <div class="form-row">
@@ -1950,6 +1952,110 @@ async function saveContract() {
   showPanel('contracts');
 }
 
+async function openProjectsModal(contractId) {
+  const [{ data: contract, error: contractErr }, { data: projects }] = await Promise.all([
+    sb.from('arc_contracts').select('*, arc_customers(company_name)').eq('id', contractId).single(),
+    sb.from('arc_projects').select('*, arc_time_logs(hours)').eq('contract_id', contractId).order('created_at')
+  ]);
+
+  if (contractErr || !contract) {
+    alert('Unable to load contract: ' + (contractErr?.message || 'Contract not found'));
+    return;
+  }
+
+  const rows = projects && projects.length > 0
+    ? projects.map(project => `
+      <tr>
+        <td><strong>${project.project_name}</strong></td>
+        <td>${project.status || 'active'}</td>
+        <td>${formatCurrency(project.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0)}</td>
+        <td>${project.notes || '—'}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}', '${contractId}')">Delete</button></td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="5" style="text-align:center;padding:24px">No projects yet.</td></tr>';
+
+  const modal = document.getElementById('modalContent');
+  modal.innerHTML = `
+    <div class="modal-title">
+      <span>Projects - ${contract.arc_customers?.company_name || 'Company'}</span>
+      <button class="modal-close" onclick="closeModal()">x</button>
+    </div>
+    <div class="form-card">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Project Name</label>
+          <input type="text" id="projectName" class="form-input" placeholder="Project name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select id="projectStatus" class="form-select">
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="paused">Paused</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea id="projectNotes" class="form-textarea" placeholder="Optional project notes"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="saveProject('${contractId}')">Create Project</button>
+      <div id="projectMsg" class="auth-msg"></div>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Project</th><th>Status</th><th>Used Hours</th><th>Notes</th><th>Actions</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+async function saveProject(contractId) {
+  const projectName = document.getElementById('projectName').value.trim();
+  const status = document.getElementById('projectStatus').value;
+  const notes = document.getElementById('projectNotes').value.trim();
+
+  if (!projectName) {
+    showMsg('projectMsg', 'Please enter a project name', 'error');
+    return;
+  }
+
+  loading(true, 'Saving project...');
+  const { error } = await sb.from('arc_projects').insert({
+    contract_id: contractId,
+    project_name: projectName,
+    status,
+    notes: notes || null
+  });
+  loading(false);
+
+  if (error) {
+    showMsg('projectMsg', 'Error saving project: ' + error.message, 'error');
+    return;
+  }
+
+  await openProjectsModal(contractId);
+}
+
+async function deleteProject(projectId, contractId) {
+  if (!confirm('Delete this project? Existing logs will keep contract history but lose project link.')) return;
+
+  loading(true, 'Deleting project...');
+  const { error } = await sb.from('arc_projects').delete().eq('id', projectId);
+  loading(false);
+
+  if (error) {
+    alert('Error deleting project: ' + error.message);
+    return;
+  }
+
+  await openProjectsModal(contractId);
+}
+
 async function deleteContract(id) {
   if (!confirm('Delete this contract? This cannot be undone.')) return;
 
@@ -1963,7 +2069,7 @@ async function deleteContract(id) {
 async function renderTimeLogs() {
   const { data: logs } = await sb
     .from('arc_time_logs')
-    .select('*, arc_contracts(id, arc_customers(company_name)), arc_profiles(name)')
+    .select('*, arc_projects(project_name), arc_contracts(id, arc_customers(company_name)), arc_profiles(name)')
     .order('created_at', { ascending: false });
 
   let html = `
@@ -1971,7 +2077,7 @@ async function renderTimeLogs() {
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Customer</th><th>Task</th><th>Date</th><th>Hours</th><th>Logged By</th><th>Description</th><th>Actions</th></tr>
+          <tr><th>Company</th><th>Project</th><th>Task</th><th>Date</th><th>Hours</th><th>Logged By</th><th>Description</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -1980,6 +2086,7 @@ async function renderTimeLogs() {
     html += logs.map(log => `
       <tr>
         <td><strong>${log.arc_contracts?.arc_customers?.company_name || '—'}</strong></td>
+        <td>${log.arc_projects?.project_name || '—'}</td>
         <td>${log.task_name || '—'}</td>
         <td>${formatDate(log.work_date)}</td>
         <td><strong>${formatCurrency(log.hours)}</strong></td>
@@ -1992,7 +2099,7 @@ async function renderTimeLogs() {
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="7" style="text-align:center;padding:40px">No time logs yet.</td></tr>';
+    html += '<tr><td colspan="8" style="text-align:center;padding:40px">No time logs yet.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -2012,21 +2119,23 @@ async function deleteTimeLog(id) {
 async function renderLogTime() {
   const { data: contracts } = await sb
     .from('arc_contracts')
-    .select('id, arc_customers(company_name)')
+    .select('id, arc_customers(company_name), arc_projects(id, project_name, status)')
     .gte('end_date', new Date().toISOString().split('T')[0])
     .order('start_date', { ascending: false });
 
-  let contractOptions = '<option value="">— Select Customer —</option>';
+  let projectOptions = '<option value="">Select Company / Contract / Project</option>';
   contracts?.forEach(c => {
-    contractOptions += `<option value="${c.id}">${c.arc_customers?.company_name || 'Unknown'}</option>`;
+    c.arc_projects?.filter(p => (p.status || 'active') === 'active').forEach(p => {
+      projectOptions += `<option value="${c.id}|${p.id}">${c.arc_customers?.company_name || 'Unknown'} - ${p.project_name}</option>`;
+    });
   });
 
   const html = `
     <div class="panel-title">➕ Log Time</div>
     <div class="form-card">
       <div class="form-group">
-        <label class="form-label">Customer / Project</label>
-        <select id="logContractId" class="form-select">${contractOptions}</select>
+        <label class="form-label">Company / Project</label>
+        <select id="logProjectRef" class="form-select">${projectOptions}</select>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -2055,13 +2164,14 @@ async function renderLogTime() {
 }
 
 async function saveTimeLog() {
-  const contractId = document.getElementById('logContractId').value;
+  const projectRef = document.getElementById('logProjectRef').value;
+  const [contractId, projectId] = projectRef.split('|');
   const task = document.getElementById('logTask').value.trim();
   const date = document.getElementById('logDate').value;
   const hours = parseFloat(document.getElementById('logHours').value);
   const desc = document.getElementById('logDesc').value.trim();
 
-  if (!contractId || !task || !date || !hours) {
+  if (!contractId || !projectId || !task || !date || !hours) {
     showMsg('logMsg', 'Please fill in all required fields', 'error');
     return;
   }
@@ -2070,6 +2180,7 @@ async function saveTimeLog() {
 
   const { error } = await sb.from('arc_time_logs').insert({
     contract_id: contractId,
+    project_id: projectId,
     task_name: task,
     work_date: date,
     hours: hours,
@@ -2085,7 +2196,7 @@ async function saveTimeLog() {
   }
 
   showMsg('logMsg', '✓ Time logged successfully', 'success');
-  document.getElementById('logContractId').value = '';
+  document.getElementById('logProjectRef').value = '';
   document.getElementById('logTask').value = '';
   document.getElementById('logDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('logHours').value = '';
@@ -2169,11 +2280,11 @@ async function renderAssigned() {
 async function renderMyContract() {
   const { data: contracts } = await sb
     .from('arc_contracts')
-    .select('*')
-    .eq('customer_id', STATE.user.id)
+    .select('*, arc_projects(id, project_name), arc_time_logs(hours)')
+    .eq('customer_id', STATE.profile.customer_id)
     .order('start_date', { ascending: false });
 
-  let html = '<div class="panel-title">📋 My Contract</div>';
+  let html = '<div class="panel-title">Company Contracts</div>';
 
   if (!contracts || contracts.length === 0) {
     html += '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No active contracts found.</div></div>';
@@ -2204,7 +2315,7 @@ async function renderMyHours() {
   const { data: contracts } = await sb
     .from('arc_contracts')
     .select('*')
-    .eq('customer_id', STATE.user.id)
+    .eq('customer_id', STATE.profile.customer_id)
     .order('start_date', { ascending: false });
 
   let html = '<div class="panel-title">⏱ Hours Usage</div>';
@@ -2368,7 +2479,7 @@ async function exportToExcel() {
   const { data: contracts } = await sb
     .from('arc_contracts')
     .select('*')
-    .eq('customer_id', STATE.user.id);
+    .eq('customer_id', STATE.profile.customer_id);
 
   if (!contracts || contracts.length === 0) {
     alert('No contracts found');
