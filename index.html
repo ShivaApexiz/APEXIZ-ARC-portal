@@ -1069,6 +1069,38 @@ async function doLogout() {
   showPage('authPage');
 }
 
+async function restoreSession(session) {
+  if (!session?.user) {
+    showPage('authPage');
+    return;
+  }
+
+  const { data: profile, error: profileErr } = await sb
+    .from('arc_profiles')
+    .select('*')
+    .eq('id', session.user.id)
+    .single();
+
+  if (profileErr || !profile) {
+    console.error('Session profile restore failed:', {
+      authUserId: session.user.id,
+      authEmail: session.user.email,
+      profileErr
+    });
+    showPage('authPage');
+    showMsg(
+      'loginMsg',
+      `Session found for ${session.user.email}. Auth ID: ${session.user.id}. Profile detail: ${profileErr?.message || 'No matching profile row returned'}`,
+      'error'
+    );
+    return;
+  }
+
+  STATE.user = session.user;
+  STATE.profile = profile;
+  routeUser(profile);
+}
+
 function routeUser(profile) {
   const avatar = document.getElementById('userAvatar');
   const nameEl = document.getElementById('userName');
@@ -2411,7 +2443,7 @@ window.addEventListener('load', async () => {
     loading(false);
 
     if (session) {
-      await doLogin({ preventDefault: () => {} });
+      await restoreSession(session);
     }
   } catch (e) {
     loading(false);
