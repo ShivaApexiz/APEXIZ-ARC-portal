@@ -1354,7 +1354,14 @@ async function saveNewUser(type) {
       profileData.customer_id = customerId;
     }
 
-    const { error: profileErr } = await sb.from('arc_profiles').insert(profileData);
+    const { error: profileErr } = await sb.rpc('create_arc_profile', {
+      profile_id: profileData.id,
+      profile_name: profileData.name,
+      profile_email: profileData.email,
+      profile_role: profileData.role,
+      profile_team_name: profileData.team_name || null,
+      profile_customer_id: profileData.customer_id || null
+    });
 
     if (profileErr) {
       loading(false);
