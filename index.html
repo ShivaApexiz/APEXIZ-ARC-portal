@@ -1200,6 +1200,7 @@ async function renderUsers() {
   let html = `
     <div class="panel-title">👥 User Management</div>
     <div class="btn-group">
+      <button class="btn btn-secondary" onclick="openInternalTeamsModal()">Manage Internal Teams</button>
       <button class="btn btn-primary" onclick="openAddUserModal('internal')">➕ Add Internal Team Member</button>
       <button class="btn btn-primary" onclick="openAddUserModal('customer')">➕ Add Customer User</button>
     </div>
@@ -1235,6 +1236,9 @@ async function renderUsers() {
 
 async function openAddUserModal(type) {
   const isInternal = type === 'internal';
+  const { data: teams } = isInternal
+    ? await sb.from('arc_internal_teams').select('id, name').order('name')
+    : { data: [] };
   
   let html = `
     <div class="modal-title">
@@ -1257,15 +1261,20 @@ async function openAddUserModal(type) {
   `;
 
   if (isInternal) {
+    const teamOptions = [
+      '<option value="">-- Select Internal Team --</option>',
+      ...(teams || []).map(team => `<option value="${team.name}">${team.name}</option>`)
+    ].join('');
+
     html += `
       <div class="form-group">
-        <label class="form-label">Team Name (optional)</label>
-        <input type="text" id="userTeamName" class="form-input" placeholder="Weld Inspection Team">
+        <label class="form-label">Internal Team</label>
+        <select id="userTeamName" class="form-select">${teamOptions}</select>
       </div>
     `;
   } else {
     const { data: customers } = await sb.from('arc_customers').select('id, company_name');
-    let custOptions = '<option value="">— Select Customer —</option>';
+    let custOptions = '<option value="">Select Company</option>';
     customers?.forEach(c => {
       custOptions += `<option value="${c.id}">${c.company_name}</option>`;
     });
@@ -1288,6 +1297,90 @@ async function openAddUserModal(type) {
   document.getElementById('modalOverlay').classList.add('open');
 }
 
+async function openInternalTeamsModal() {
+  const { data: teams, error } = await sb
+    .from('arc_internal_teams')
+    .select('*')
+    .order('name');
+
+  if (error) {
+    alert('Unable to load internal teams: ' + error.message);
+    return;
+  }
+
+  const rows = teams && teams.length > 0
+    ? teams.map(team => `
+      <tr>
+        <td><strong>${team.name}</strong></td>
+        <td>
+          <button class="btn btn-sm btn-danger" onclick="deleteInternalTeam('${team.id}')">Delete</button>
+        </td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="2" style="text-align:center;padding:24px">No internal teams yet.</td></tr>';
+
+  const modal = document.getElementById('modalContent');
+  modal.innerHTML = `
+    <div class="modal-title">
+      <span>Internal Teams</span>
+      <button class="modal-close" onclick="closeModal()">x</button>
+    </div>
+    <div class="form-card">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Team Name</label>
+          <input type="text" id="newInternalTeamName" class="form-input" placeholder="Inspection Team">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveInternalTeam()">Create Team</button>
+      <div id="teamMsg" class="auth-msg"></div>
+    </div>
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead><tr><th>Team</th><th>Actions</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+async function saveInternalTeam() {
+  const name = document.getElementById('newInternalTeamName').value.trim();
+
+  if (!name) {
+    showMsg('teamMsg', 'Please enter a team name', 'error');
+    return;
+  }
+
+  loading(true, 'Creating team...');
+  const { error } = await sb.from('arc_internal_teams').insert({ name });
+  loading(false);
+
+  if (error) {
+    showMsg('teamMsg', 'Error creating team: ' + error.message, 'error');
+    return;
+  }
+
+  await openInternalTeamsModal();
+}
+
+async function deleteInternalTeam(id) {
+  if (!confirm('Delete this internal team?')) return;
+
+  loading(true, 'Deleting team...');
+  const { error } = await sb.from('arc_internal_teams').delete().eq('id', id);
+  loading(false);
+
+  if (error) {
+    alert('Error deleting team: ' + error.message);
+    return;
+  }
+
+  await openInternalTeamsModal();
+}
+
 async function saveNewUser(type) {
   const name = document.getElementById('userFullName').value.trim();
   const email = document.getElementById('userEmail').value.trim();
@@ -1307,6 +1400,11 @@ async function saveNewUser(type) {
 
   if (type === 'customer' && !customerId) {
     showMsg('userMsg', 'Please select a customer', 'error');
+    return;
+  }
+
+  if (type === 'internal' && !teamName) {
+    showMsg('userMsg', 'Please select an internal team', 'error');
     return;
   }
 
