@@ -991,9 +991,19 @@ async function doLogin(e) {
       .single();
 
     if (profileErr || !profile) {
+      console.error('Profile lookup failed:', {
+        authUserId: data.user.id,
+        authEmail: data.user.email,
+        profileErr
+      });
       await sb.auth.signOut();
       loading(false);
-      showMsg('loginMsg', 'Account not found. Contact your administrator.', 'error');
+      const detail = profileErr?.message || 'No matching profile row returned';
+      showMsg(
+        'loginMsg',
+        `Account profile not found for ${data.user.email || email}. Auth ID: ${data.user.id}. Detail: ${detail}`,
+        'error'
+      );
       return;
     }
 
