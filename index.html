@@ -1037,6 +1037,7 @@ body {
           <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
         </div>
         <button type="submit" class="btn-primary">Sign In →</button>
+        <button type="button" class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="requestPasswordReset()">Forgot Password</button>
         <div id="loginMsg" class="auth-msg"></div>
       </form>
       <form id="passwordSetupForm" onsubmit="completePasswordSetup(event)" style="display:none">
@@ -1359,6 +1360,26 @@ async function doLogin(e) {
     loading(false);
     showMsg('loginMsg', 'Error: ' + e.message, 'error');
   }
+}
+
+async function requestPasswordReset() {
+  const email = document.getElementById('loginEmail').value.trim();
+
+  if (!email) {
+    showMsg('loginMsg', 'Enter your email, then click Forgot Password.', 'error');
+    return;
+  }
+
+  loading(true, 'Sending reset email...');
+  const error = await sendPasswordSetupEmail(email);
+  loading(false);
+
+  if (error) {
+    showMsg('loginMsg', error.message, 'error');
+    return;
+  }
+
+  showMsg('loginMsg', 'Password email sent. Check your inbox.', 'success');
 }
 
 async function doLogout() {
