@@ -1825,6 +1825,7 @@ async function renderDashboardV2() {
       const used = (c.arc_time_logs || []).reduce((sum, log) => sum + (log.hours || 0), 0);
       return `
         <tr>
+          <td>${c.contract_name || '—'}</td>
           <td>${c.arc_customers?.company_name || '—'}</td>
           <td>${formatDate(c.start_date)}</td>
           <td>${formatDate(c.end_date)}</td>
@@ -1833,7 +1834,7 @@ async function renderDashboardV2() {
         </tr>
       `;
     }).join('')
-    : '<tr><td colspan="5" style="text-align:center;padding:28px">No contracts yet.</td></tr>';
+    : '<tr><td colspan="6" style="text-align:center;padding:28px">No contracts yet.</td></tr>';
 
   main.innerHTML = `
     <div class="dashboard-shell-grid">
@@ -1881,7 +1882,7 @@ async function renderDashboardV2() {
       <div class="dashboard-section-header">${isCustomer ? 'My Contracts' : 'All Contracts'}</div>
       <div class="table-section-body">
         <table class="data-table">
-          <thead><tr><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Projects</th><th>Used Hours</th></tr></thead>
+          <thead><tr><th>Contract</th><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Projects</th><th>Used Hours</th></tr></thead>
           <tbody>${contractRows}</tbody>
         </table>
       </div>
@@ -2184,7 +2185,7 @@ async function renderContracts() {
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Hours</th><th>Used Hours</th><th>Projects</th><th>Actions</th></tr>
+          <tr><th>Contract</th><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Hours</th><th>Used Hours</th><th>Projects</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -2192,6 +2193,7 @@ async function renderContracts() {
   if (contracts && contracts.length > 0) {
     html += contracts.map(c => `
       <tr>
+        <td><strong>${c.contract_name || '—'}</strong></td>
         <td><strong>${c.arc_customers?.company_name || '—'}</strong></td>
         <td>${formatDate(c.start_date)}</td>
         <td>${formatDate(c.end_date)}</td>
@@ -2205,7 +2207,7 @@ async function renderContracts() {
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="7" style="text-align:center;padding:40px">No contracts yet.</td></tr>';
+    html += '<tr><td colspan="8" style="text-align:center;padding:40px">No contracts yet.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -2227,6 +2229,10 @@ async function openContractModal() {
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="form-card">
+      <div class="form-group">
+        <label class="form-label">Contract Name</label>
+        <input type="text" id="contractName" class="form-input" placeholder="Annual Resource Contract 2026">
+      </div>
       <div class="form-group">
         <label class="form-label">Customer</label>
         <select id="contractCust" class="form-select">${custOptions}</select>
@@ -2256,13 +2262,14 @@ async function openContractModal() {
 }
 
 async function saveContract() {
+  const contractName = document.getElementById('contractName').value.trim();
   const custId = document.getElementById('contractCust').value;
   const start = document.getElementById('contractStart').value;
   const end = document.getElementById('contractEnd').value;
   const hours = parseFloat(document.getElementById('contractHours').value);
   const notes = document.getElementById('contractNotes').value.trim();
 
-  if (!custId || !start || !end || !hours) {
+  if (!contractName || !custId || !start || !end || !hours) {
     alert('Please fill in all required fields');
     return;
   }
@@ -2270,6 +2277,7 @@ async function saveContract() {
   loading(true, 'Saving…');
 
   const { error } = await sb.from('arc_contracts').insert({
+    contract_name: contractName,
     customer_id: custId,
     start_date: start,
     end_date: end,
