@@ -1138,6 +1138,85 @@ const STATE = {
   currentPanel: 'dashboard'
 };
 
+const COUNTRIES = [
+  ['Afghanistan', '+93'],
+  ['Albania', '+355'],
+  ['Algeria', '+213'],
+  ['Argentina', '+54'],
+  ['Armenia', '+374'],
+  ['Australia', '+61'],
+  ['Austria', '+43'],
+  ['Azerbaijan', '+994'],
+  ['Bahrain', '+973'],
+  ['Bangladesh', '+880'],
+  ['Belgium', '+32'],
+  ['Brazil', '+55'],
+  ['Bulgaria', '+359'],
+  ['Canada', '+1'],
+  ['Chile', '+56'],
+  ['China', '+86'],
+  ['Colombia', '+57'],
+  ['Croatia', '+385'],
+  ['Czech Republic', '+420'],
+  ['Denmark', '+45'],
+  ['Egypt', '+20'],
+  ['Estonia', '+372'],
+  ['Finland', '+358'],
+  ['France', '+33'],
+  ['Georgia', '+995'],
+  ['Germany', '+49'],
+  ['Ghana', '+233'],
+  ['Greece', '+30'],
+  ['Hong Kong', '+852'],
+  ['Hungary', '+36'],
+  ['Iceland', '+354'],
+  ['India', '+91'],
+  ['Indonesia', '+62'],
+  ['Ireland', '+353'],
+  ['Israel', '+972'],
+  ['Italy', '+39'],
+  ['Japan', '+81'],
+  ['Jordan', '+962'],
+  ['Kazakhstan', '+7'],
+  ['Kenya', '+254'],
+  ['Kuwait', '+965'],
+  ['Latvia', '+371'],
+  ['Lithuania', '+370'],
+  ['Luxembourg', '+352'],
+  ['Malaysia', '+60'],
+  ['Mexico', '+52'],
+  ['Morocco', '+212'],
+  ['Netherlands', '+31'],
+  ['New Zealand', '+64'],
+  ['Nigeria', '+234'],
+  ['Norway', '+47'],
+  ['Oman', '+968'],
+  ['Pakistan', '+92'],
+  ['Philippines', '+63'],
+  ['Poland', '+48'],
+  ['Portugal', '+351'],
+  ['Qatar', '+974'],
+  ['Romania', '+40'],
+  ['Saudi Arabia', '+966'],
+  ['Singapore', '+65'],
+  ['Slovakia', '+421'],
+  ['Slovenia', '+386'],
+  ['South Africa', '+27'],
+  ['South Korea', '+82'],
+  ['Spain', '+34'],
+  ['Sri Lanka', '+94'],
+  ['Sweden', '+46'],
+  ['Switzerland', '+41'],
+  ['Taiwan', '+886'],
+  ['Thailand', '+66'],
+  ['Turkey', '+90'],
+  ['Ukraine', '+380'],
+  ['United Arab Emirates', '+971'],
+  ['United Kingdom', '+44'],
+  ['United States', '+1'],
+  ['Vietnam', '+84']
+];
+
 /* ══════════════════════════════════════
    UTILITIES
 ══════════════════════════════════════ */
@@ -1200,6 +1279,20 @@ async function sendPasswordSetupEmail(email) {
     redirectTo: getAuthRedirectUrl()
   });
   return error;
+}
+
+function renderCountryOptions(selectedCountry = '') {
+  const placeholder = '<option value="" data-code="">Select Country</option>';
+  return placeholder + COUNTRIES
+    .map(([country, code]) => `<option value="${country}" data-code="${code}" ${country === selectedCountry ? 'selected' : ''}>${country}</option>`)
+    .join('');
+}
+
+function updateMobileCountryCode() {
+  const countrySelect = document.getElementById('custCountry');
+  const codeInput = document.getElementById('custMobileCode');
+  if (!countrySelect || !codeInput) return;
+  codeInput.value = countrySelect.selectedOptions[0]?.dataset.code || '';
 }
 
 /* ══════════════════════════════════════
@@ -1655,7 +1748,9 @@ async function openCustomerModal() {
       </div>
       <div class="form-group">
         <label class="form-label">Country</label>
-        <input type="text" id="custCountry" class="form-input" placeholder="Country">
+        <select id="custCountry" class="form-select" onchange="updateMobileCountryCode()">
+          ${renderCountryOptions()}
+        </select>
       </div>
       <div class="form-row">
         <div class="form-group">
