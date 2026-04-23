@@ -1068,7 +1068,7 @@ body {
       
       <div id="adminNav" style="display: none;">
         <div class="nav-section">Admin</div>
-        <button class="nav-item" id="navCustomers" onclick="showPanel('customers')">🏢 Companies</button>
+        <button class="nav-item" id="navCustomers" onclick="showPanel('customers')">🏢 Customers</button>
         <button class="nav-item" id="navContracts" onclick="showPanel('contracts')">📋 Contracts</button>
         <button class="nav-item" id="navLogtime" onclick="showPanel('logtime')">➕ Log Time</button>
         <button class="nav-item" id="navTimeLogs" onclick="showPanel('timelogs')">⏱ Time Logs</button>
@@ -1296,24 +1296,24 @@ async function showPanel(name) {
 /* ── DASHBOARD ── */
 async function renderDashboardV2() {
   const main = document.getElementById('mainContent');
-  const isCompany = STATE.profile.role === 'customer';
-  const companyId = STATE.profile.customer_id;
+  const isCustomer = STATE.profile.role === 'customer';
+  const customerId = STATE.profile.customer_id;
 
   let contractQuery = sb
     .from('arc_contracts')
     .select('*, arc_customers(company_name), arc_projects(id, project_name), arc_time_logs(hours, work_date, task_name, project_id, arc_projects(project_name), arc_profiles(name))')
     .order('start_date', { ascending: false });
 
-  if (isCompany) contractQuery = contractQuery.eq('customer_id', companyId);
+  if (isCustomer) contractQuery = contractQuery.eq('customer_id', customerId);
 
-  const [{ data: contracts }, { data: companies }, { data: projects }, { data: logs }] = await Promise.all([
+  const [{ data: contracts }, { data: customers }, { data: projects }, { data: logs }] = await Promise.all([
     contractQuery,
-    isCompany ? Promise.resolve({ data: [] }) : sb.from('arc_customers').select('id'),
-    isCompany
-      ? sb.from('arc_projects').select('*, arc_contracts(customer_id)').eq('arc_contracts.customer_id', companyId)
+    isCustomer ? Promise.resolve({ data: [] }) : sb.from('arc_customers').select('id'),
+    isCustomer
+      ? sb.from('arc_projects').select('*, arc_contracts(customer_id)').eq('arc_contracts.customer_id', customerId)
       : sb.from('arc_projects').select('*'),
-    isCompany
-      ? sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(customer_id, arc_customers(company_name)), arc_profiles(name)').eq('arc_contracts.customer_id', companyId).order('work_date', { ascending: false }).limit(5)
+    isCustomer
+      ? sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(customer_id, arc_customers(company_name)), arc_profiles(name)').eq('arc_contracts.customer_id', customerId).order('work_date', { ascending: false }).limit(5)
       : sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(arc_customers(company_name)), arc_profiles(name)').order('work_date', { ascending: false }).limit(5)
   ]);
 
@@ -1344,14 +1344,14 @@ async function renderDashboardV2() {
 
   const maxProjectHours = Math.max(...topProjects.map(p => p.hours), 1);
 
-  const metricCards = isCompany
+  const metricCards = isCustomer
     ? [
         ['My Contracts', safeContracts.length, 'Active Contracts'],
         ['Projects', projects?.length || 0, 'Total Projects'],
         ['Logged Hours', `${formatCurrency(usedHours)}h`, 'Total Used Hours']
       ]
     : [
-        ['Companies', companies?.length || 0, 'Total Registered'],
+        ['Customers', customers?.length || 0, 'Total Registered'],
         ['Contracts', safeContracts.length, 'Total Contracts'],
         ['Projects', projects?.length || 0, 'Total Projects'],
         ['Logged Hours', `${formatCurrency(usedHours)}h`, 'Total Used Hours']
@@ -1361,13 +1361,13 @@ async function renderDashboardV2() {
     ? safeLogs.map(log => `
       <tr>
         <td>${formatDate(log.work_date)}</td>
-        ${isCompany ? '' : `<td>${log.arc_contracts?.arc_customers?.company_name || '—'}</td>`}
+        ${isCustomer ? '' : `<td>${log.arc_contracts?.arc_customers?.company_name || '—'}</td>`}
         <td>${log.arc_projects?.project_name || '—'}</td>
         <td>${formatCurrency(log.hours)}h</td>
         <td>${log.arc_profiles?.name || 'Admin'}</td>
       </tr>
     `).join('')
-    : `<tr><td colspan="${isCompany ? 4 : 5}" style="text-align:center;padding:28px">No time logs yet.</td></tr>`;
+    : `<tr><td colspan="${isCustomer ? 4 : 5}" style="text-align:center;padding:28px">No time logs yet.</td></tr>`;
 
   const contractRows = safeContracts.length
     ? safeContracts.slice(0, 6).map(c => {
@@ -1420,21 +1420,21 @@ async function renderDashboardV2() {
       <div class="dashboard-section-header">Recent Time Logs</div>
       <div class="table-section-body">
         <table class="data-table">
-          <thead><tr><th>Date</th>${isCompany ? '' : '<th>Company</th>'}<th>Project</th><th>Logged Hours</th><th>Logged By</th></tr></thead>
+          <thead><tr><th>Date</th>${isCustomer ? '' : '<th>Customer</th>'}<th>Project</th><th>Logged Hours</th><th>Logged By</th></tr></thead>
           <tbody>${recentRows}</tbody>
         </table>
       </div>
     </div>
 
     <div class="dashboard-section">
-      <div class="dashboard-section-header">${isCompany ? 'My Contracts' : 'All Contracts'}</div>
+      <div class="dashboard-section-header">${isCustomer ? 'My Contracts' : 'All Contracts'}</div>
       <div class="table-section-body">
         <table class="data-table">
-          <thead><tr><th>Company</th><th>Start Date</th><th>End Date</th><th>Total Projects</th><th>Used Hours</th></tr></thead>
+          <thead><tr><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Projects</th><th>Used Hours</th></tr></thead>
           <tbody>${contractRows}</tbody>
         </table>
       </div>
-      ${isCompany ? '<div class="alert info show" style="margin:12px 16px 16px">Contract used hours are the sum of all used project hours in a contract.</div>' : ''}
+      ${isCustomer ? '<div class="alert info show" style="margin:12px 16px 16px">Contract used hours are the sum of all used project hours in a contract.</div>' : ''}
     </div>
   `;
 }
@@ -1444,7 +1444,7 @@ async function renderDashboard() {
   const role = STATE.profile.role;
 
   if (role === 'customer') {
-    // Company dashboard
+    // Customer dashboard
     const { data: contracts } = await sb
       .from('arc_contracts')
       .select('*')
@@ -1507,7 +1507,7 @@ async function renderDashboard() {
     let html = `<div class="panel-title">📊 Dashboard</div>
       <div class="cards-grid">
         <div class="card">
-          <div class="card-label">Total Companies</div>
+          <div class="card-label">Total Customers</div>
           <div class="card-value">${contracts?.length || 0}</div>
         </div>
         <div class="card">
@@ -1532,12 +1532,12 @@ async function renderCustomers() {
   const { data: customers } = await sb.from('arc_customers').select('*').order('created_at', { ascending: false });
 
   let html = `
-    <div class="panel-title">🏢 Companies</div>
-    <button class="btn btn-primary" onclick="openCustomerModal()">+ New Company</button>
+    <div class="panel-title">🏢 Customers</div>
+    <button class="btn btn-primary" onclick="openCustomerModal()">+ New Customer</button>
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Company</th><th>Contact</th><th>Email</th><th>Status</th><th>Actions</th></tr>
+          <tr><th>Customer</th><th>Contact</th><th>Email</th><th>Status</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -1555,7 +1555,7 @@ async function renderCustomers() {
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="5" style="text-align:center;padding:40px">No companies yet.</td></tr>';
+    html += '<tr><td colspan="5" style="text-align:center;padding:40px">No customers yet.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -1566,13 +1566,13 @@ async function openCustomerModal() {
   const modal = document.getElementById('modalContent');
   modal.innerHTML = `
     <div class="modal-title">
-      <span>New Company</span>
+      <span>New Customer</span>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="form-card">
       <div class="form-group">
-        <label class="form-label">Company Name</label>
-        <input type="text" id="custName" class="form-input" placeholder="Company Ltd">
+        <label class="form-label">Customer Name</label>
+        <input type="text" id="custName" class="form-input" placeholder="Customer name">
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -1581,7 +1581,7 @@ async function openCustomerModal() {
         </div>
         <div class="form-group">
           <label class="form-label">Email</label>
-          <input type="email" id="custEmail" class="form-input" placeholder="contact@company.com">
+          <input type="email" id="custEmail" class="form-input" placeholder="contact@customer.com">
         </div>
       </div>
       <div class="form-group">
@@ -1591,7 +1591,7 @@ async function openCustomerModal() {
           <option value="inactive">Inactive</option>
         </select>
       </div>
-      <button class="btn btn-primary" onclick="saveCustomer()">Create Company →</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">Create Customer →</button>
     </div>
   `;
   document.getElementById('modalOverlay').classList.add('open');
@@ -1650,7 +1650,7 @@ async function renderContracts() {
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Company</th><th>Start Date</th><th>End Date</th><th>Total Hours</th><th>Used Hours</th><th>Projects</th><th>Actions</th></tr>
+          <tr><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Hours</th><th>Used Hours</th><th>Projects</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -1681,7 +1681,7 @@ async function renderContracts() {
 async function openContractModal() {
   const { data: customers } = await sb.from('arc_customers').select('id, company_name');
 
-  let custOptions = '<option value="">Select Company</option>';
+  let custOptions = '<option value="">Select Customer</option>';
   customers?.forEach(c => {
     custOptions += `<option value="${c.id}">${c.company_name}</option>`;
   });
@@ -1694,7 +1694,7 @@ async function openContractModal() {
     </div>
     <div class="form-card">
       <div class="form-group">
-        <label class="form-label">Company</label>
+        <label class="form-label">Customer</label>
         <select id="contractCust" class="form-select">${custOptions}</select>
       </div>
       <div class="form-row">
@@ -1780,7 +1780,7 @@ async function openProjectsModal(contractId) {
   const modal = document.getElementById('modalContent');
   modal.innerHTML = `
     <div class="modal-title">
-      <span>Projects - ${contract.arc_customers?.company_name || 'Company'}</span>
+      <span>Projects - ${contract.arc_customers?.company_name || 'Customer'}</span>
       <button class="modal-close" onclick="closeModal()">x</button>
     </div>
     <div class="form-card">
@@ -1879,7 +1879,7 @@ async function renderTimeLogs() {
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Company</th><th>Project</th><th>Task</th><th>Date</th><th>Hours</th><th>Logged By</th><th>Description</th><th>Actions</th></tr>
+          <tr><th>Customer</th><th>Project</th><th>Task</th><th>Date</th><th>Hours</th><th>Logged By</th><th>Description</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -1925,7 +1925,7 @@ async function renderLogTime() {
     .gte('end_date', new Date().toISOString().split('T')[0])
     .order('start_date', { ascending: false });
 
-  let projectOptions = '<option value="">Select Company / Contract / Project</option>';
+  let projectOptions = '<option value="">Select Customer / Contract / Project</option>';
   contracts?.forEach(c => {
     c.arc_projects?.filter(p => (p.status || 'active') === 'active').forEach(p => {
       projectOptions += `<option value="${c.id}|${p.id}">${c.arc_customers?.company_name || 'Unknown'} - ${p.project_name}</option>`;
@@ -1936,7 +1936,7 @@ async function renderLogTime() {
     <div class="panel-title">➕ Log Time</div>
     <div class="form-card">
       <div class="form-group">
-        <label class="form-label">Company / Project</label>
+        <label class="form-label">Customer / Project</label>
         <select id="logProjectRef" class="form-select">${projectOptions}</select>
       </div>
       <div class="form-row">
@@ -2015,7 +2015,7 @@ async function renderMyContract() {
     .eq('customer_id', STATE.profile.customer_id)
     .order('start_date', { ascending: false });
 
-  let html = '<div class="panel-title">Company Contracts</div>';
+  let html = '<div class="panel-title">Customer Contracts</div>';
 
   if (!contracts || contracts.length === 0) {
     html += '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No active contracts found.</div></div>';
