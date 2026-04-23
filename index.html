@@ -1025,6 +1025,18 @@ body {
         <button type="submit" class="btn-primary">Sign In →</button>
         <div id="loginMsg" class="auth-msg"></div>
       </form>
+      <form id="passwordSetupForm" onsubmit="completePasswordSetup(event)" style="display:none">
+        <div class="form-group">
+          <label class="form-label">New Password</label>
+          <input type="password" id="setupPassword" class="form-input" placeholder="Minimum 6 characters" required minlength="6">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <input type="password" id="setupPasswordConfirm" class="form-input" placeholder="Re-enter password" required minlength="6">
+        </div>
+        <button type="submit" class="btn-primary">Set Password →</button>
+        <div id="setupMsg" class="auth-msg"></div>
+      </form>
     </div>
   </div>
   <div class="footer">© 2026 APEXIZ • CONFIDENTIAL INFORMATION • ALL RIGHTS RESERVED</div>
@@ -1162,6 +1174,34 @@ function getUsageStatus(used, total) {
   return 'success';
 }
 
+function getAuthRedirectUrl() {
+  return window.location.href.split('#')[0].split('?')[0];
+}
+
+function generateTemporaryPassword() {
+  const bytes = new Uint32Array(4);
+  window.crypto.getRandomValues(bytes);
+  return `Apexiz-${Array.from(bytes).map(n => n.toString(36)).join('-')}!`;
+}
+
+function showPasswordSetup() {
+  showPage('authPage');
+  document.getElementById('authTitle').innerText = 'Set Password';
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('passwordSetupForm').style.display = 'block';
+}
+
+function isPasswordRecoveryUrl() {
+  return window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery');
+}
+
+async function sendPasswordSetupEmail(email) {
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: getAuthRedirectUrl()
+  });
+  return error;
+}
+
 /* ══════════════════════════════════════
    AUTH
 ══════════════════════════════════════ */
@@ -1219,6 +1259,43 @@ async function doLogout() {
   STATE.user = null;
   STATE.profile = null;
   showPage('authPage');
+}
+
+async function completePasswordSetup(e) {
+  e.preventDefault();
+  const password = document.getElementById('setupPassword').value;
+  const confirm = document.getElementById('setupPasswordConfirm').value;
+
+  if (password.length < 6) {
+    showMsg('setupMsg', 'Password must be at least 6 characters', 'error');
+    return;
+  }
+
+  if (password !== confirm) {
+    showMsg('setupMsg', 'Passwords do not match', 'error');
+    return;
+  }
+
+  loading(true, 'Setting password...');
+  const { error } = await sb.auth.updateUser({ password });
+
+  if (error) {
+    loading(false);
+    showMsg('setupMsg', error.message, 'error');
+    return;
+  }
+
+  const { data: { session } } = await sb.auth.getSession();
+  loading(false);
+
+  if (session) {
+    await restoreSession(session);
+  } else {
+    document.getElementById('authTitle').innerText = 'Sign In';
+    document.getElementById('passwordSetupForm').style.display = 'none';
+    document.getElementById('loginForm').style.display = 'block';
+    showMsg('loginMsg', 'Password set. Please sign in.', 'success');
+  }
 }
 
 async function restoreSession(session) {
@@ -1537,7 +1614,7 @@ async function renderCustomers() {
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Customer</th><th>Contact</th><th>Email</th><th>Status</th><th>Actions</th></tr>
+          <tr><th>Customer</th><th>Country</th><th>Contact</th><th>Email</th><th>Mobile</th><th>Status</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -1546,8 +1623,10 @@ async function renderCustomers() {
     html += customers.map(c => `
       <tr>
         <td><strong>${c.company_name}</strong></td>
+        <td>${c.country || '—'}</td>
         <td>${c.contact_person || '—'}</td>
         <td>${c.email || '—'}</td>
+        <td>${[c.contact_mobile_country_code, c.contact_mobile].filter(Boolean).join(' ') || '—'}</td>
         <td><span class="badge active">${(c.status || 'active').toUpperCase()}</span></td>
         <td>
           <button class="btn btn-sm btn-danger" onclick="deleteCustomer('${c.id}')">Delete</button>
@@ -1555,7 +1634,7 @@ async function renderCustomers() {
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="5" style="text-align:center;padding:40px">No customers yet.</td></tr>';
+    html += '<tr><td colspan="7" style="text-align:center;padding:40px">No customers yet.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -1571,8 +1650,12 @@ async function openCustomerModal() {
     </div>
     <div class="form-card">
       <div class="form-group">
-        <label class="form-label">Customer Name</label>
-        <input type="text" id="custName" class="form-input" placeholder="Customer name">
+        <label class="form-label">Company Name</label>
+        <input type="text" id="custName" class="form-input" placeholder="Customer company name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Country</label>
+        <input type="text" id="custCountry" class="form-input" placeholder="Country">
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -1584,7 +1667,18 @@ async function openCustomerModal() {
           <input type="email" id="custEmail" class="form-input" placeholder="contact@customer.com">
         </div>
       </div>
-      <button class="btn btn-primary" onclick="saveCustomer()">Create Customer →</button>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Mobile Country Code</label>
+          <input type="tel" id="custMobileCode" class="form-input" placeholder="+91">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mobile Number</label>
+          <input type="tel" id="custMobile" class="form-input" placeholder="9876543210">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveCustomer()">Register Customer →</button>
+      <div id="customerMsg" class="auth-msg"></div>
     </div>
   `;
   document.getElementById('modalOverlay').classList.add('open');
@@ -1592,31 +1686,74 @@ async function openCustomerModal() {
 
 async function saveCustomer() {
   const name = document.getElementById('custName').value.trim();
+  const country = document.getElementById('custCountry').value.trim();
   const person = document.getElementById('custPerson').value.trim();
   const email = document.getElementById('custEmail').value.trim();
+  const mobileCode = document.getElementById('custMobileCode').value.trim();
+  const mobile = document.getElementById('custMobile').value.trim();
 
-  if (!name || !email) {
-    alert('Please fill in all required fields');
+  if (!name || !country || !person || !email || !mobileCode || !mobile) {
+    showMsg('customerMsg', 'Please fill in all required fields', 'error');
     return;
   }
 
-  loading(true, 'Saving…');
+  loading(true, 'Registering customer...');
 
-  const { error } = await sb.from('arc_customers').insert({
+  const { data: customer, error } = await sb.from('arc_customers').insert({
     company_name: name,
+    country,
     contact_person: person,
-    email: email
-  });
-
-  loading(false);
+    email: email,
+    contact_mobile_country_code: mobileCode,
+    contact_mobile: mobile
+  }).select('id').single();
 
   if (error) {
-    alert('Error: ' + error.message);
+    loading(false);
+    showMsg('customerMsg', 'Error creating customer: ' + error.message, 'error');
     return;
   }
 
-  closeModal();
-  showPanel('customers');
+  const currentSession = (await sb.auth.getSession()).data.session;
+  const { error: signUpError } = await sb.auth.signUp({
+    email,
+    password: generateTemporaryPassword(),
+    options: {
+      emailRedirectTo: getAuthRedirectUrl(),
+      data: {
+        name: person,
+        role: 'customer',
+        customer_id: customer.id
+      }
+    }
+  });
+
+  if (currentSession) {
+    await sb.auth.setSession({
+      access_token: currentSession.access_token,
+      refresh_token: currentSession.refresh_token
+    });
+  }
+
+  if (signUpError) {
+    loading(false);
+    showMsg('customerMsg', 'Customer saved, but auth registration failed: ' + signUpError.message, 'error');
+    return;
+  }
+
+  const setupEmailError = await sendPasswordSetupEmail(email);
+  loading(false);
+
+  if (setupEmailError) {
+    showMsg('customerMsg', 'Customer saved, but setup email failed: ' + setupEmailError.message, 'error');
+    return;
+  }
+
+  showMsg('customerMsg', 'Customer registered. Password setup email sent.', 'success');
+  setTimeout(() => {
+    closeModal();
+    showPanel('customers');
+  }, 1200);
 }
 
 async function deleteCustomer(id) {
@@ -2272,10 +2409,16 @@ window.addEventListener('load', async () => {
   loading(true, 'Initializing…');
 
   try {
+    sb.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') showPasswordSetup();
+    });
+
     const { data: { session } } = await sb.auth.getSession();
     loading(false);
 
-    if (session) {
+    if (session && isPasswordRecoveryUrl()) {
+      showPasswordSetup();
+    } else if (session) {
       await restoreSession(session);
     }
   } catch (e) {
