@@ -194,8 +194,8 @@ body {
 .sidebar {
   width: 200px;
   min-width: 200px;
-  background: var(--dark);
-  border-right: 1px solid rgba(255,255,255,0.08);
+  background: var(--white);
+  border-right: 1px solid var(--neutral-200);
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -211,7 +211,7 @@ body {
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.55);
+  color: var(--neutral-500);
   margin: 14px 0 8px;
   display: flex;
   align-items: center;
@@ -235,7 +235,7 @@ body {
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
-  color: rgba(255,255,255,0.88);
+  color: var(--neutral-700);
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
@@ -244,7 +244,7 @@ body {
   gap: 8px;
 }
 
-.nav-item:hover { background: rgba(255,85,0,0.16); color: var(--white); }
+.nav-item:hover { background: var(--primary-light); color: var(--primary); }
 .nav-item.active { background: var(--primary); color: var(--white); }
 
 .nav-divider {
@@ -282,29 +282,30 @@ body {
 .main-content::-webkit-scrollbar-thumb { background: var(--neutral-300); }
 
 #dashPage .topbar {
-  background: var(--dark);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  box-shadow: none;
+  background: var(--white);
+  border-bottom: 1px solid var(--neutral-200);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 #dashPage .topbar-brand,
 #dashPage .site-update-stamp {
-  color: var(--white);
+  color: var(--primary);
 }
 
 #dashPage .site-update-stamp {
-  border-left-color: rgba(255,255,255,0.18);
-  opacity: 0.72;
+  border-left-color: var(--neutral-200);
+  opacity: 1;
+  color: var(--neutral-500);
 }
 
 #dashPage .user-badge {
-  background: rgba(255,255,255,0.1);
-  color: var(--white);
+  background: var(--neutral-100);
+  color: var(--dark);
 }
 
 #dashPage .logout-btn {
-  border-color: rgba(255,255,255,0.22);
-  color: var(--white);
+  border-color: var(--neutral-200);
+  color: var(--neutral-500);
 }
 
 #dashPage .footer {
