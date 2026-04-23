@@ -1584,13 +1584,6 @@ async function openCustomerModal() {
           <input type="email" id="custEmail" class="form-input" placeholder="contact@customer.com">
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <select id="custStatus" class="form-select">
-          <option value="active">Active</option>
-          <option value="inactive">Inactive</option>
-        </select>
-      </div>
       <button class="btn btn-primary" onclick="saveCustomer()">Create Customer →</button>
     </div>
   `;
@@ -1601,7 +1594,6 @@ async function saveCustomer() {
   const name = document.getElementById('custName').value.trim();
   const person = document.getElementById('custPerson').value.trim();
   const email = document.getElementById('custEmail').value.trim();
-  const status = document.getElementById('custStatus').value;
 
   if (!name || !email) {
     alert('Please fill in all required fields');
@@ -1613,8 +1605,7 @@ async function saveCustomer() {
   const { error } = await sb.from('arc_customers').insert({
     company_name: name,
     contact_person: person,
-    email: email,
-    status: status
+    email: email
   });
 
   loading(false);
