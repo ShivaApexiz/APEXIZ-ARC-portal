@@ -1994,19 +1994,24 @@ async function renderCustomers() {
   `;
 
   if (customers && customers.length > 0) {
-    html += customers.map(c => `
+    html += customers.map(c => {
+      const status = (c.status || 'active').toLowerCase();
+      const nextStatus = status === 'active' ? 'inactive' : 'active';
+      return `
       <tr>
         <td><strong>${c.company_name}</strong></td>
         <td>${c.country || '—'}</td>
         <td>${c.contact_person || '—'}</td>
         <td>${c.email || '—'}</td>
         <td>${[c.contact_mobile_country_code, c.contact_mobile].filter(Boolean).join(' ') || '—'}</td>
-        <td><span class="badge active">${(c.status || 'active').toUpperCase()}</span></td>
+        <td><span class="badge ${status}">${status.toUpperCase()}</span></td>
         <td>
+          <button class="btn btn-sm btn-secondary" onclick="toggleCustomerStatus('${c.id}', '${status}')">${nextStatus === 'active' ? 'Activate' : 'Deactivate'}</button>
           <button class="btn btn-sm btn-danger" onclick="deleteCustomer('${c.id}')">Delete</button>
         </td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
   } else {
     html += '<tr><td colspan="7" style="text-align:center;padding:40px">No customers yet.</td></tr>';
   }
@@ -2141,6 +2146,25 @@ async function deleteCustomer(id) {
 
   if (error) {
     alert('Error deleting customer: ' + error.message + '\n\nMake sure supabase_delete_arc_user_rpc.sql has been run in Supabase.');
+    return;
+  }
+
+  showPanel('customers');
+}
+
+async function toggleCustomerStatus(id, currentStatus) {
+  const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
+  loading(true, `${nextStatus === 'active' ? 'Activating' : 'Deactivating'} customer...`);
+
+  const { error } = await sb
+    .from('arc_customers')
+    .update({ status: nextStatus })
+    .eq('id', id);
+
+  loading(false);
+
+  if (error) {
+    alert('Error updating customer status: ' + error.message);
     return;
   }
 
