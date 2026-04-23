@@ -2133,11 +2133,17 @@ async function saveCustomer() {
 }
 
 async function deleteCustomer(id) {
-  if (!confirm('Delete this customer? This cannot be undone.')) return;
+  if (!confirm('Delete this customer, its login account, contracts, projects, and time logs? This cannot be undone.')) return;
 
   loading(true, 'Deleting…');
-  await sb.from('arc_customers').delete().eq('id', id);
+  const { error } = await sb.rpc('delete_arc_customer', { target_customer_id: id });
   loading(false);
+
+  if (error) {
+    alert('Error deleting customer: ' + error.message + '\n\nMake sure supabase_delete_arc_user_rpc.sql has been run in Supabase.');
+    return;
+  }
+
   showPanel('customers');
 }
 
