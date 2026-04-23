@@ -1282,6 +1282,7 @@ function generateTemporaryPassword() {
 }
 
 function showPasswordSetup() {
+  sessionStorage.setItem('arcPasswordRecovery', '1');
   showPage('authPage');
   document.getElementById('authTitle').innerText = 'Set Password';
   document.getElementById('loginForm').style.display = 'none';
@@ -1290,6 +1291,10 @@ function showPasswordSetup() {
 
 function isPasswordRecoveryUrl() {
   return window.location.hash.includes('type=recovery') || window.location.search.includes('type=recovery');
+}
+
+function isPasswordRecoveryMode() {
+  return isPasswordRecoveryUrl() || sessionStorage.getItem('arcPasswordRecovery') === '1';
 }
 
 async function sendPasswordSetupEmail(email) {
@@ -1416,6 +1421,7 @@ async function completePasswordSetup(e) {
     return;
   }
 
+  sessionStorage.removeItem('arcPasswordRecovery');
   const { data: { session } } = await sb.auth.getSession();
   loading(false);
 
@@ -2542,6 +2548,9 @@ window.addEventListener('load', async () => {
   loading(true, 'Initializing…');
 
   try {
+    const recoveryMode = isPasswordRecoveryMode();
+    if (recoveryMode) sessionStorage.setItem('arcPasswordRecovery', '1');
+
     sb.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') showPasswordSetup();
     });
@@ -2549,7 +2558,7 @@ window.addEventListener('load', async () => {
     const { data: { session } } = await sb.auth.getSession();
     loading(false);
 
-    if (session && isPasswordRecoveryUrl()) {
+    if (recoveryMode || isPasswordRecoveryMode()) {
       showPasswordSetup();
     } else if (session) {
       await restoreSession(session);
