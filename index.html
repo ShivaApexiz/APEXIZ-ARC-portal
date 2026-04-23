@@ -1139,6 +1139,7 @@ body {
 ══════════════════════════════════════ */
 const SUPABASE_URL = 'https://yjmulcovzttnytmondlh.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqbXVsY292enR0bnl0bW9uZGxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NDQ2NjAsImV4cCI6MjA5MDUyMDY2MH0.y9su7u4vhJnJ1grSUgaJaQSbIC8bmgYsG44TXyq4trE';
+const AUTH_REDIRECT_URL = 'https://shivaapexiz.github.io/APEXIZ-ARC-portal/';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 /* ══════════════════════════════════════
@@ -1269,7 +1270,9 @@ function getUsageStatus(used, total) {
 }
 
 function getAuthRedirectUrl() {
-  return window.location.href.split('#')[0].split('?')[0];
+  const cleanUrl = window.location.href.split('#')[0].split('?')[0];
+  const isLocal = ['localhost', '127.0.0.1', ''].includes(window.location.hostname) || window.location.protocol === 'file:';
+  return isLocal ? AUTH_REDIRECT_URL : cleanUrl;
 }
 
 function generateTemporaryPassword() {
