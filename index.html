@@ -1752,38 +1752,60 @@ async function renderDashboardV2() {
 
   let contractQuery = sb
     .from('arc_contracts')
-    .select('*, arc_customers(company_name), arc_projects(id, project_name), arc_time_logs(hours, work_date, task_name, project_id, arc_projects(project_name), arc_profiles(name))')
+    .select('*, arc_customers(company_name), arc_projects(id, project_name)')
     .order('start_date', { ascending: false });
 
   if (isCustomer) contractQuery = contractQuery.eq('customer_id', customerId);
 
-  const [{ data: contracts }, { data: customers }, { data: projects }, { data: logs }] = await Promise.all([
+  let logsQuery = sb
+    .from('arc_time_logs')
+    .select('*, arc_projects(project_name), arc_contracts!inner(id, contract_name, customer_id, arc_customers(company_name)), arc_profiles(name)')
+    .order('work_date', { ascending: false });
+
+  if (isCustomer) logsQuery = logsQuery.eq('arc_contracts.customer_id', customerId);
+
+  const [contractsRes, customersRes, projectsRes, logsRes] = await Promise.all([
     contractQuery,
     isCustomer ? Promise.resolve({ data: [] }) : sb.from('arc_customers').select('id'),
     isCustomer
       ? sb.from('arc_projects').select('*, arc_contracts(customer_id)').eq('arc_contracts.customer_id', customerId)
       : sb.from('arc_projects').select('*'),
-    isCustomer
-      ? sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(customer_id, arc_customers(company_name)), arc_profiles(name)').eq('arc_contracts.customer_id', customerId).order('work_date', { ascending: false }).limit(5)
-      : sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(arc_customers(company_name)), arc_profiles(name)').order('work_date', { ascending: false }).limit(5)
+    logsQuery
   ]);
 
+  const queryError = contractsRes.error || customersRes.error || projectsRes.error || logsRes.error;
+  if (queryError) {
+    main.innerHTML = `<div class="alert error show">Unable to load dashboard: ${queryError.message}</div>`;
+    return;
+  }
+
+  const contracts = contractsRes.data;
+  const customers = customersRes.data;
+  const projects = projectsRes.data;
+  const logs = logsRes.data;
   const safeContracts = contracts || [];
-  const safeLogs = logs || [];
+  const allLogs = logs || [];
+  const safeLogs = allLogs.slice(0, 5);
   const totalContracted = safeContracts.reduce((sum, c) => sum + (c.total_hours || 0), 0);
-  const allContractLogs = safeContracts.flatMap(c => c.arc_time_logs || []);
-  const usedHours = allContractLogs.reduce((sum, log) => sum + (log.hours || 0), 0);
+  const usedHours = allLogs.reduce((sum, log) => sum + (log.hours || 0), 0);
+
+  const usedByContract = allLogs.reduce((acc, log) => {
+    const contractId = log.contract_id || log.arc_contracts?.id;
+    if (contractId) acc[contractId] = (acc[contractId] || 0) + (log.hours || 0);
+    return acc;
+  }, {});
 
   const contractUsedHours = safeContracts
     .map(c => ({
-      name: c.arc_customers?.company_name || 'Contract',
-      hours: (c.arc_time_logs || []).reduce((sum, log) => sum + (log.hours || 0), 0)
+      name: c.contract_name || c.arc_customers?.company_name || 'Contract',
+      hours: usedByContract[c.id] || 0
     }))
+    .filter(c => c.hours > 0)
     .sort((a, b) => b.hours - a.hours)
     .slice(0, 5);
 
   const projectHoursMap = {};
-  allContractLogs.forEach(log => {
+  allLogs.forEach(log => {
     const projectName = log.arc_projects?.project_name || 'Unassigned';
     projectHoursMap[projectName] = (projectHoursMap[projectName] || 0) + (log.hours || 0);
   });
@@ -1822,7 +1844,7 @@ async function renderDashboardV2() {
 
   const contractRows = safeContracts.length
     ? safeContracts.slice(0, 6).map(c => {
-      const used = (c.arc_time_logs || []).reduce((sum, log) => sum + (log.hours || 0), 0);
+      const used = usedByContract[c.id] || 0;
       return `
         <tr>
           <td>${c.contract_name || '—'}</td>
@@ -2174,7 +2196,7 @@ async function toggleCustomerStatus(id, currentStatus) {
 
 /* ── CONTRACTS (ADMIN) ── */
 async function renderContracts() {
-  const { data: contracts } = await sb
+  const { data: contracts, error } = await sb
     .from('arc_contracts')
     .select('*, arc_customers(company_name), arc_projects(id, project_name), arc_time_logs(hours)')
     .order('start_date', { ascending: false });
@@ -2411,10 +2433,15 @@ async function deleteContract(id) {
 
 /* ── TIME LOGS (ADMIN VIEW) ── */
 async function renderTimeLogs() {
-  const { data: logs } = await sb
+  const { data: logs, error } = await sb
     .from('arc_time_logs')
     .select('*, arc_projects(project_name), arc_contracts(id, arc_customers(company_name)), arc_profiles(name)')
     .order('created_at', { ascending: false });
+
+  if (error) {
+    document.getElementById('mainContent').innerHTML = `<div class="alert error show">Unable to load time logs: ${error.message}</div>`;
+    return;
+  }
 
   let html = `
     <div class="panel-title">⏱ Time Logs</div>
@@ -2461,18 +2488,28 @@ async function deleteTimeLog(id) {
 
 /* ── LOG TIME (ADMIN) ── */
 async function renderLogTime() {
-  const { data: contracts } = await sb
+  const { data: contracts, error } = await sb
     .from('arc_contracts')
-    .select('id, arc_customers(company_name), arc_projects(id, project_name, status)')
+    .select('id, contract_name, arc_customers(company_name), arc_projects(id, project_name, status)')
     .gte('end_date', new Date().toISOString().split('T')[0])
     .order('start_date', { ascending: false });
 
+  if (error) {
+    document.getElementById('mainContent').innerHTML = `<div class="panel-title">Log Time</div><div class="alert error show">Unable to load active projects: ${error.message}</div>`;
+    return;
+  }
+
   let projectOptions = '<option value="">Select Customer / Contract / Project</option>';
+  let optionCount = 0;
   contracts?.forEach(c => {
     c.arc_projects?.filter(p => (p.status || 'active') === 'active').forEach(p => {
-      projectOptions += `<option value="${c.id}|${p.id}">${c.arc_customers?.company_name || 'Unknown'} - ${p.project_name}</option>`;
+      optionCount += 1;
+      const contractLabel = c.contract_name ? ` - ${c.contract_name}` : '';
+      projectOptions += `<option value="${c.id}|${p.id}">${c.arc_customers?.company_name || 'Unknown'}${contractLabel} - ${p.project_name}</option>`;
     });
   });
+
+  const emptyProjectNotice = optionCount ? '' : '<div class="alert warning show">No active projects available. Open Contracts, add a project to an active contract, then log time.</div>';
 
   const html = `
     <div class="panel-title">➕ Log Time</div>
@@ -2480,6 +2517,7 @@ async function renderLogTime() {
       <div class="form-group">
         <label class="form-label">Customer / Project</label>
         <select id="logProjectRef" class="form-select">${projectOptions}</select>
+        ${emptyProjectNotice}
       </div>
       <div class="form-row">
         <div class="form-group">
