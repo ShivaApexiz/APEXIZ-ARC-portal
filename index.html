@@ -153,7 +153,6 @@ body {
 }
 
 .role-tag.admin { background: var(--dark); color: var(--white); }
-.role-tag.internal { background: var(--info); color: var(--white); }
 .role-tag.customer { background: var(--neutral-200); color: var(--neutral-700); }
 
 /* ── FOOTER ── */
@@ -1069,18 +1068,11 @@ body {
       
       <div id="adminNav" style="display: none;">
         <div class="nav-section">Admin</div>
-        <button class="nav-item" id="navUsers" onclick="showPanel('users')">👥 Users</button>
-        <button class="nav-item" id="navCustomers" onclick="showPanel('customers')">🏢 Customers</button>
+        <button class="nav-item" id="navCustomers" onclick="showPanel('customers')">🏢 Companies</button>
         <button class="nav-item" id="navContracts" onclick="showPanel('contracts')">📋 Contracts</button>
+        <button class="nav-item" id="navLogtime" onclick="showPanel('logtime')">➕ Log Time</button>
         <button class="nav-item" id="navTimeLogs" onclick="showPanel('timelogs')">⏱ Time Logs</button>
         <button class="nav-item" id="navReports" onclick="showPanel('reports')">📊 Reports</button>
-      </div>
-
-      <div id="internalNav" style="display: none;">
-        <div class="nav-section">Team</div>
-        <button class="nav-item" id="navLogTime" onclick="showPanel('logtime')">➕ Log Time</button>
-        <button class="nav-item" id="navMyLogs" onclick="showPanel('mylogs')">📝 My Logs</button>
-        <button class="nav-item" id="navAssigned" onclick="showPanel('assigned')">👥 Assigned Customers</button>
       </div>
 
       <div id="customerNav" style="display: none;">
@@ -1273,7 +1265,6 @@ function routeUser(profile) {
 
   // Show/hide nav sections
   document.getElementById('adminNav').style.display = profile.role === 'admin' ? 'block' : 'none';
-  document.getElementById('internalNav').style.display = profile.role === 'internal' ? 'block' : 'none';
   document.getElementById('customerNav').style.display = profile.role === 'customer' ? 'block' : 'none';
 
   showPage('dashPage');
@@ -1293,14 +1284,11 @@ async function showPanel(name) {
   main.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div></div>';
 
   if (name === 'dashboard') await renderDashboardV2();
-  else if (name === 'users') await renderUsers();
   else if (name === 'customers') await renderCustomers();
   else if (name === 'contracts') await renderContracts();
   else if (name === 'timelogs') await renderTimeLogs();
   else if (name === 'reports') await renderReports();
   else if (name === 'logtime') await renderLogTime();
-  else if (name === 'mylogs') await renderMyLogs();
-  else if (name === 'assigned') await renderAssigned();
   else if (name === 'mycontract') await renderMyContract();
   else if (name === 'myhours') await renderMyHours();
 }
@@ -1509,7 +1497,7 @@ async function renderDashboard() {
 
     main.innerHTML = html;
   } else {
-    // Admin/Internal dashboard
+    // Admin dashboard
     const { data: contracts } = await sb.from('arc_contracts').select('*');
     const { data: logs } = await sb.from('arc_time_logs').select('hours');
 
@@ -1519,7 +1507,7 @@ async function renderDashboard() {
     let html = `<div class="panel-title">📊 Dashboard</div>
       <div class="cards-grid">
         <div class="card">
-          <div class="card-label">Total Customers</div>
+          <div class="card-label">Total Companies</div>
           <div class="card-value">${contracts?.length || 0}</div>
         </div>
         <div class="card">
@@ -1540,425 +1528,16 @@ async function renderDashboard() {
   }
 }
 
-/* ── USERS (ADMIN) ── */
-async function renderUsers() {
-  const { data: profiles } = await sb.from('arc_profiles').select('*').order('created_at', { ascending: false });
-
-  let html = `
-    <div class="panel-title">👥 User Management</div>
-    <div class="btn-group">
-      <button class="btn btn-tool" onclick="openInternalTeamsModal()">Manage Internal Teams</button>
-      <button class="btn btn-primary" onclick="openAddUserModal('internal')">➕ Add Internal Team Member</button>
-      <button class="btn btn-primary" onclick="openAddUserModal('customer')">➕ Add Customer User</button>
-    </div>
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr><th>Name</th><th>Email</th><th>Role</th><th>Company/Team</th><th>Status</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
-  `;
-
-  if (profiles && profiles.length > 0) {
-    html += profiles.map(p => `
-      <tr>
-        <td><strong>${p.name}</strong></td>
-        <td>${p.email || '—'}</td>
-        <td><span class="badge active">${p.role.toUpperCase()}</span></td>
-        <td>${p.company_name || p.team_name || '—'}</td>
-        <td><span class="badge active">Active</span></td>
-        <td>
-          <button class="btn btn-sm btn-secondary" onclick="editUser('${p.id}')">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteUser('${p.id}')">Delete</button>
-        </td>
-      </tr>
-    `).join('');
-  } else {
-    html += '<tr><td colspan="6" style="text-align:center;padding:40px">No users yet.</td></tr>';
-  }
-
-  html += '</tbody></table></div>';
-  document.getElementById('mainContent').innerHTML = html;
-}
-
-async function openAddUserModal(type) {
-  const isInternal = type === 'internal';
-  const { data: teams } = isInternal
-    ? await sb.from('arc_internal_teams').select('id, name').order('name')
-    : { data: [] };
-  
-  let html = `
-    <div class="modal-title">
-      <span>${isInternal ? '➕ Add Internal Team Member' : '➕ Add Customer User'}</span>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="form-card">
-      <div class="form-group">
-        <label class="form-label">Full Name</label>
-        <input type="text" id="userFullName" class="form-input" placeholder="John Doe">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email Address</label>
-        <input type="email" id="userEmail" class="form-input" placeholder="john@company.com">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Password</label>
-        <input type="password" id="userPassword" class="form-input" placeholder="Temporary password">
-      </div>
-  `;
-
-  if (isInternal) {
-    const teamOptions = [
-      '<option value="">-- Select Internal Team --</option>',
-      ...(teams || []).map(team => `<option value="${team.name}">${team.name}</option>`)
-    ].join('');
-
-    html += `
-      <div class="form-group">
-        <label class="form-label">Internal Team</label>
-        <select id="userTeamName" class="form-select">${teamOptions}</select>
-      </div>
-    `;
-  } else {
-    const { data: customers } = await sb.from('arc_customers').select('id, company_name');
-    let custOptions = '<option value="">Select Company</option>';
-    customers?.forEach(c => {
-      custOptions += `<option value="${c.id}">${c.company_name}</option>`;
-    });
-
-    html += `
-      <div class="form-group">
-        <label class="form-label">Company</label>
-        <select id="userCustomerId" class="form-select">${custOptions}</select>
-      </div>
-    `;
-  }
-
-  html += `
-      <button class="btn btn-primary" onclick="saveNewUser('${type}')">Create User →</button>
-      <div id="userMsg" class="auth-msg"></div>
-    </div>
-  `;
-
-  document.getElementById('modalContent').innerHTML = html;
-  document.getElementById('modalOverlay').classList.add('open');
-}
-
-async function openInternalTeamsModal() {
-  const { data: teams, error } = await sb
-    .from('arc_internal_teams')
-    .select('*')
-    .order('name');
-
-  if (error) {
-    const modal = document.getElementById('modalContent');
-    modal.innerHTML = `
-      <div class="modal-title">
-        <span>Internal Teams Setup Required</span>
-        <button class="modal-close" onclick="closeModal()">x</button>
-      </div>
-      <div class="form-card">
-        <div class="alert warning show">
-          Run supabase_internal_teams.sql in Supabase SQL Editor, then refresh this page.
-        </div>
-        <div class="form-group">
-          <label class="form-label">Supabase Message</label>
-          <textarea class="form-textarea" readonly>${error.message}</textarea>
-        </div>
-      </div>
-    `;
-    document.getElementById('modalOverlay').classList.add('open');
-    return;
-  }
-
-  const rows = teams && teams.length > 0
-    ? teams.map(team => `
-      <tr>
-        <td><strong>${team.name}</strong></td>
-        <td>
-          <button class="btn btn-sm btn-danger" onclick="deleteInternalTeam('${team.id}')">Delete</button>
-        </td>
-      </tr>
-    `).join('')
-    : '<tr><td colspan="2" style="text-align:center;padding:24px">No internal teams yet.</td></tr>';
-
-  const modal = document.getElementById('modalContent');
-  modal.innerHTML = `
-    <div class="modal-title">
-      <span>Internal Teams</span>
-      <button class="modal-close" onclick="closeModal()">x</button>
-    </div>
-    <div class="form-card">
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Team Name</label>
-          <input type="text" id="newInternalTeamName" class="form-input" placeholder="Inspection Team">
-        </div>
-      </div>
-      <button class="btn btn-primary" onclick="saveInternalTeam()">Create Team</button>
-      <div id="teamMsg" class="auth-msg"></div>
-    </div>
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead><tr><th>Team</th><th>Actions</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
-
-  document.getElementById('modalOverlay').classList.add('open');
-}
-
-async function saveInternalTeam() {
-  const name = document.getElementById('newInternalTeamName').value.trim();
-
-  if (!name) {
-    showMsg('teamMsg', 'Please enter a team name', 'error');
-    return;
-  }
-
-  loading(true, 'Creating team...');
-  const { error } = await sb.from('arc_internal_teams').insert({ name });
-  loading(false);
-
-  if (error) {
-    showMsg('teamMsg', 'Error creating team: ' + error.message, 'error');
-    return;
-  }
-
-  await openInternalTeamsModal();
-}
-
-async function deleteInternalTeam(id) {
-  if (!confirm('Delete this internal team?')) return;
-
-  loading(true, 'Deleting team...');
-  const { error } = await sb.from('arc_internal_teams').delete().eq('id', id);
-  loading(false);
-
-  if (error) {
-    alert('Error deleting team: ' + error.message);
-    return;
-  }
-
-  await openInternalTeamsModal();
-}
-
-async function saveNewUser(type) {
-  const name = document.getElementById('userFullName').value.trim();
-  const email = document.getElementById('userEmail').value.trim();
-  const password = document.getElementById('userPassword').value;
-  const customerId = type === 'customer' ? document.getElementById('userCustomerId').value : null;
-  const teamName = type === 'internal' ? document.getElementById('userTeamName')?.value.trim() : null;
-
-  if (!name || !email || !password) {
-    showMsg('userMsg', 'Please fill in all required fields', 'error');
-    return;
-  }
-
-  if (password.length < 6) {
-    showMsg('userMsg', 'Password must be at least 6 characters', 'error');
-    return;
-  }
-
-  if (type === 'customer' && !customerId) {
-    showMsg('userMsg', 'Please select a customer', 'error');
-    return;
-  }
-
-  if (type === 'internal' && !teamName) {
-    showMsg('userMsg', 'Please select an internal team', 'error');
-    return;
-  }
-
-  loading(true, 'Creating user account…');
-
-  try {
-    const signupClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false
-      }
-    });
-
-    // Create auth account without replacing the admin browser session.
-    const { data: authData, error: authErr } = await signupClient.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        data: {
-          name: name,
-          role: type,
-          team_name: teamName || null,
-          customer_id: customerId || null
-        }
-      }
-    });
-
-    if (authErr) {
-      loading(false);
-      showMsg('userMsg', 'Error creating account: ' + authErr.message, 'error');
-      return;
-    }
-
-    const userId = authData.user?.id;
-    if (!userId) {
-      loading(false);
-      showMsg('userMsg', 'Failed to create user', 'error');
-      return;
-    }
-
-    loading(false);
-    showMsg('userMsg', '✓ User created successfully', 'success');
-    
-    setTimeout(() => {
-      closeModal();
-      showPanel('users');
-    }, 1500);
-
-  } catch (e) {
-    loading(false);
-    showMsg('userMsg', 'Unexpected error: ' + e.message, 'error');
-  }
-}
-
-async function deleteUser(id) {
-  if (!confirm('Delete this user? This cannot be undone.')) return;
-
-  loading(true, 'Deleting user…');
-  
-  const { error } = await sb.rpc('delete_arc_user', { target_user_id: id });
-  
-  loading(false);
-
-  if (error) {
-    alert('Error deleting user: ' + error.message);
-    return;
-  }
-
-  showPanel('users');
-}
-async function editUser(id) {
-  loading(true, 'Loading user...');
-
-  const [{ data: profile, error: profileErr }, { data: customers }] = await Promise.all([
-    sb.from('arc_profiles').select('*').eq('id', id).single(),
-    sb.from('arc_customers').select('id, company_name').order('company_name')
-  ]);
-
-  loading(false);
-
-  if (profileErr || !profile) {
-    alert('Unable to load user: ' + (profileErr?.message || 'Profile not found'));
-    return;
-  }
-
-  const customerOptions = [
-    '<option value="">-- Select Customer --</option>',
-    ...(customers || []).map(c => `<option value="${c.id}" ${profile.customer_id === c.id ? 'selected' : ''}>${c.company_name}</option>`)
-  ].join('');
-
-  const modal = document.getElementById('modalContent');
-  modal.innerHTML = `
-    <div class="modal-title">
-      <span>Edit User</span>
-      <button class="modal-close" onclick="closeModal()">x</button>
-    </div>
-    <div class="form-card">
-      <div class="form-group">
-        <label class="form-label">Full Name</label>
-        <input type="text" id="editUserName" class="form-input" value="${profile.name || ''}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email Address</label>
-        <input type="email" id="editUserEmail" class="form-input" value="${profile.email || ''}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Role</label>
-        <select id="editUserRole" class="form-select" onchange="toggleEditUserRoleFields()">
-          <option value="admin" ${profile.role === 'admin' ? 'selected' : ''}>Admin</option>
-          <option value="internal" ${profile.role === 'internal' ? 'selected' : ''}>Internal</option>
-          <option value="customer" ${profile.role === 'customer' ? 'selected' : ''}>Customer</option>
-        </select>
-      </div>
-      <div class="form-group" id="editTeamGroup">
-        <label class="form-label">Team Name</label>
-        <input type="text" id="editUserTeam" class="form-input" value="${profile.team_name || ''}" placeholder="Internal team">
-      </div>
-      <div class="form-group" id="editCustomerGroup">
-        <label class="form-label">Customer</label>
-        <select id="editUserCustomer" class="form-select">${customerOptions}</select>
-      </div>
-      <button class="btn btn-primary" onclick="saveUserEdit('${profile.id}')">Save User</button>
-      <div id="editUserMsg" class="auth-msg"></div>
-    </div>
-  `;
-
-  document.getElementById('modalOverlay').classList.add('open');
-  toggleEditUserRoleFields();
-}
-
-function toggleEditUserRoleFields() {
-  const role = document.getElementById('editUserRole')?.value;
-  const teamGroup = document.getElementById('editTeamGroup');
-  const customerGroup = document.getElementById('editCustomerGroup');
-
-  if (teamGroup) teamGroup.style.display = role === 'internal' ? 'flex' : 'none';
-  if (customerGroup) customerGroup.style.display = role === 'customer' ? 'flex' : 'none';
-}
-
-async function saveUserEdit(id) {
-  const name = document.getElementById('editUserName').value.trim();
-  const email = document.getElementById('editUserEmail').value.trim();
-  const role = document.getElementById('editUserRole').value;
-  const teamName = document.getElementById('editUserTeam')?.value.trim();
-  const customerId = document.getElementById('editUserCustomer')?.value;
-
-  if (!name || !email || !role) {
-    showMsg('editUserMsg', 'Please fill in all required fields', 'error');
-    return;
-  }
-
-  if (role === 'customer' && !customerId) {
-    showMsg('editUserMsg', 'Please select a customer', 'error');
-    return;
-  }
-
-  const updateData = {
-    name,
-    email,
-    role,
-    team_name: role === 'internal' ? (teamName || null) : null,
-    customer_id: role === 'customer' ? customerId : null
-  };
-
-  loading(true, 'Saving user...');
-  const { error } = await sb.from('arc_profiles').update(updateData).eq('id', id);
-  loading(false);
-
-  if (error) {
-    showMsg('editUserMsg', 'Error saving user: ' + error.message, 'error');
-    return;
-  }
-
-  showMsg('editUserMsg', 'User updated successfully', 'success');
-  setTimeout(() => {
-    closeModal();
-    showPanel('users');
-  }, 900);
-}
-
 async function renderCustomers() {
   const { data: customers } = await sb.from('arc_customers').select('*').order('created_at', { ascending: false });
 
   let html = `
-    <div class="panel-title">🏢 Customers</div>
-    <button class="btn btn-primary" onclick="openCustomerModal()">+ New Customer</button>
+    <div class="panel-title">🏢 Companies</div>
+    <button class="btn btn-primary" onclick="openCustomerModal()">+ New Company</button>
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Company</th><th>Contact</th><th>Email</th><th>Status</th><th>Assigned Team</th><th>Actions</th></tr>
+          <tr><th>Company</th><th>Contact</th><th>Email</th><th>Status</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -1970,15 +1549,13 @@ async function renderCustomers() {
         <td>${c.contact_person || '—'}</td>
         <td>${c.email || '—'}</td>
         <td><span class="badge active">${(c.status || 'active').toUpperCase()}</span></td>
-        <td>${c.assigned_team || '—'}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="assignTeamToCustomer('${c.id}')">Assign Team</button>
           <button class="btn btn-sm btn-danger" onclick="deleteCustomer('${c.id}')">Delete</button>
         </td>
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="6" style="text-align:center;padding:40px">No customers yet.</td></tr>';
+    html += '<tr><td colspan="5" style="text-align:center;padding:40px">No companies yet.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -1989,7 +1566,7 @@ async function openCustomerModal() {
   const modal = document.getElementById('modalContent');
   modal.innerHTML = `
     <div class="modal-title">
-      <span>New Customer</span>
+      <span>New Company</span>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="form-card">
@@ -2014,7 +1591,7 @@ async function openCustomerModal() {
           <option value="inactive">Inactive</option>
         </select>
       </div>
-      <button class="btn btn-primary" onclick="saveCustomer()">Create Customer →</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">Create Company →</button>
     </div>
   `;
   document.getElementById('modalOverlay').classList.add('open');
@@ -2049,86 +1626,6 @@ async function saveCustomer() {
 
   closeModal();
   showPanel('customers');
-}
-
-async function assignTeamToCustomer(id) {
-  loading(true, 'Loading customer...');
-
-  const [{ data: customer, error: customerErr }, { data: internalUsers }] = await Promise.all([
-    sb.from('arc_customers').select('*').eq('id', id).single(),
-    sb.from('arc_profiles').select('name, team_name').eq('role', 'internal').order('name')
-  ]);
-
-  loading(false);
-
-  if (customerErr || !customer) {
-    alert('Unable to load customer: ' + (customerErr?.message || 'Customer not found'));
-    return;
-  }
-
-  const teamNames = [...new Set((internalUsers || [])
-    .map(u => u.team_name || u.name)
-    .filter(Boolean))];
-
-  const teamOptions = [
-    '<option value="">-- Select Team --</option>',
-    ...teamNames.map(team => `<option value="${team}" ${customer.assigned_team === team ? 'selected' : ''}>${team}</option>`)
-  ].join('');
-
-  const modal = document.getElementById('modalContent');
-  modal.innerHTML = `
-    <div class="modal-title">
-      <span>Assign Team</span>
-      <button class="modal-close" onclick="closeModal()">x</button>
-    </div>
-    <div class="form-card">
-      <div class="form-group">
-        <label class="form-label">Customer</label>
-        <input type="text" class="form-input" value="${customer.company_name || ''}" readonly>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Team</label>
-        <select id="assignTeamSelect" class="form-select">${teamOptions}</select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Custom Team Name</label>
-        <input type="text" id="assignTeamCustom" class="form-input" value="${customer.assigned_team || ''}" placeholder="Type team name if not listed">
-      </div>
-      <button class="btn btn-primary" onclick="saveTeamAssignment('${customer.id}')">Save Assignment</button>
-      <div id="assignTeamMsg" class="auth-msg"></div>
-    </div>
-  `;
-
-  document.getElementById('modalOverlay').classList.add('open');
-}
-
-async function saveTeamAssignment(id) {
-  const selectedTeam = document.getElementById('assignTeamSelect')?.value || '';
-  const customTeam = document.getElementById('assignTeamCustom')?.value.trim() || '';
-  const assignedTeam = customTeam || selectedTeam;
-
-  if (!assignedTeam) {
-    showMsg('assignTeamMsg', 'Please select or enter a team name', 'error');
-    return;
-  }
-
-  loading(true, 'Assigning team...');
-  const { error } = await sb
-    .from('arc_customers')
-    .update({ assigned_team: assignedTeam })
-    .eq('id', id);
-  loading(false);
-
-  if (error) {
-    showMsg('assignTeamMsg', 'Error assigning team: ' + error.message, 'error');
-    return;
-  }
-
-  showMsg('assignTeamMsg', 'Team assigned successfully', 'success');
-  setTimeout(() => {
-    closeModal();
-    showPanel('customers');
-  }, 900);
 }
 
 async function deleteCustomer(id) {
@@ -2420,7 +1917,7 @@ async function deleteTimeLog(id) {
   showPanel('timelogs');
 }
 
-/* ── LOG TIME (INTERNAL) ── */
+/* ── LOG TIME (ADMIN) ── */
 async function renderLogTime() {
   const { data: contracts } = await sb
     .from('arc_contracts')
@@ -2507,78 +2004,7 @@ async function saveTimeLog() {
   document.getElementById('logHours').value = '';
   document.getElementById('logDesc').value = '';
 
-  setTimeout(() => showPanel('mylogs'), 1500);
-}
-
-/* ── MY LOGS (INTERNAL) ── */
-async function renderMyLogs() {
-  const { data: logs } = await sb
-    .from('arc_time_logs')
-    .select('*, arc_contracts(id, arc_customers(company_name))')
-    .eq('logged_by', STATE.user.id)
-    .order('work_date', { ascending: false });
-
-  let html = `
-    <div class="panel-title">📝 My Logs</div>
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr><th>Customer</th><th>Task</th><th>Date</th><th>Hours</th><th>Description</th></tr>
-        </thead>
-        <tbody>
-  `;
-
-  if (logs && logs.length > 0) {
-    html += logs.map(log => `
-      <tr>
-        <td><strong>${log.arc_contracts?.arc_customers?.company_name || '—'}</strong></td>
-        <td>${log.task_name || '—'}</td>
-        <td>${formatDate(log.work_date)}</td>
-        <td><strong>${formatCurrency(log.hours)}</strong></td>
-        <td>${log.description ? log.description.substring(0, 50) + '...' : '—'}</td>
-      </tr>
-    `).join('');
-  } else {
-    html += '<tr><td colspan="5" style="text-align:center;padding:40px">No time logs yet.</td></tr>';
-  }
-
-  html += '</tbody></table></div>';
-  document.getElementById('mainContent').innerHTML = html;
-}
-
-/* ── ASSIGNED CUSTOMERS (INTERNAL) ── */
-async function renderAssigned() {
-  const { data: contracts } = await sb
-    .from('arc_contracts')
-    .select('*, arc_customers(company_name, email)')
-    .order('start_date', { ascending: false });
-
-  let html = `
-    <div class="panel-title">👥 Assigned Customers</div>
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr><th>Customer</th><th>Email</th><th>Start Date</th><th>End Date</th><th>Total Hours</th></tr>
-        </thead>
-        <tbody>
-  `;
-
-  if (contracts && contracts.length > 0) {
-    html += contracts.map(c => `
-      <tr>
-        <td><strong>${c.arc_customers?.company_name || '—'}</strong></td>
-        <td>${c.arc_customers?.email || '—'}</td>
-        <td>${formatDate(c.start_date)}</td>
-        <td>${formatDate(c.end_date)}</td>
-        <td><strong>${formatCurrency(c.total_hours)}</strong></td>
-      </tr>
-    `).join('');
-  } else {
-    html += '<tr><td colspan="5" style="text-align:center;padding:40px">No assigned customers.</td></tr>';
-  }
-
-  html += '</tbody></table></div>';
-  document.getElementById('mainContent').innerHTML = html;
+  setTimeout(() => showPanel('timelogs'), 1500);
 }
 
 /* ── MY CONTRACT (CUSTOMER) ── */
