@@ -812,6 +812,20 @@ body {
   margin-bottom: 14px;
 }
 
+.phone-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 120px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 520px) {
+  .phone-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -1762,9 +1776,9 @@ async function openCustomerModal() {
           <input type="email" id="custEmail" class="form-input" placeholder="contact@customer.com">
         </div>
       </div>
-      <div class="form-row">
+      <div class="phone-row">
         <div class="form-group">
-          <label class="form-label">Mobile Country Code</label>
+          <label class="form-label">Code</label>
           <input type="tel" id="custMobileCode" class="form-input" placeholder="+91">
         </div>
         <div class="form-group">
