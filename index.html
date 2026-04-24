@@ -821,50 +821,43 @@ body {
 }
 
 .viewer-filter-controls-project {
-  grid-template-columns: repeat(auto-fit, minmax(156px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
   flex: 1 1 auto;
 }
 
 .viewer-filter-controls-project .viewer-toolbar-search {
-  min-width: 0;
-  grid-column: span 2;
+  min-width: 260px;
+  flex: 1.8 1 260px;
 }
 
 .viewer-filter-controls-project .filter-chip {
-  min-width: 0;
+  min-width: 150px;
+  flex: 1 1 150px;
 }
 
 .viewer-control-row-project {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr) max-content;
-  align-items: end;
-  column-gap: 14px;
-  row-gap: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
   width: 100%;
 }
 
 .viewer-control-row-project .toolbar-reset-btn {
   flex: 0 0 auto;
   margin-left: 0;
+  align-self: flex-start;
 }
 
 @media (max-width: 1500px) {
-  .viewer-filter-controls-project {
-    grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
-  }
-}
-
-@media (max-width: 1280px) {
   .viewer-control-row-project {
-    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .viewer-filter-controls-project .viewer-toolbar-search {
-    grid-column: span 1;
-  }
-
-  .viewer-control-row-project .toolbar-reset-btn {
-    justify-self: start;
+    flex-basis: 240px;
   }
 }
 
