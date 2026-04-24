@@ -3475,12 +3475,10 @@ async function deleteTimeLog(id) {
 
 /* â”€â”€ LOG TIME (ADMIN) â”€â”€ */
 async function renderLogTime() {
-  const today = new Date().toISOString().split('T')[0];
   const [contractsRes, projectsRes] = await Promise.all([
     sb
       .from('arc_contracts')
       .select('id, contract_name, customer_id, arc_customers(company_name)')
-      .gte('end_date', today)
       .order('start_date', { ascending: false }),
     sb
       .from('arc_projects')
@@ -3501,7 +3499,7 @@ async function renderLogTime() {
   let projectOptions = '<option value="">Select Customer / Contract / Project</option>';
   let optionCount = 0;
   projects.forEach(project => {
-    if ((project.status || 'active') !== 'active') return;
+    if (project.status && !['active', 'paused'].includes(project.status)) return;
     const contract = contractMap[project.contract_id];
     if (!contract) return;
 
