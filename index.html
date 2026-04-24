@@ -1558,6 +1558,23 @@ function updateMobileCountryCode() {
 /* ══════════════════════════════════════
    AUTH
 ══════════════════════════════════════ */
+async function getArcProfileNameMap(userIds = []) {
+  const ids = [...new Set((userIds || []).filter(Boolean))];
+  if (!ids.length) return {};
+
+  const { data, error } = await sb
+    .from('arc_profiles')
+    .select('id, name')
+    .in('id', ids);
+
+  if (error) {
+    console.error('Unable to load profile names for time logs:', error);
+    return {};
+  }
+
+  return Object.fromEntries((data || []).map(profile => [profile.id, profile.name]));
+}
+
 async function doLogin(e) {
   e.preventDefault();
   const email = document.getElementById('loginEmail').value.trim();
@@ -1759,7 +1776,7 @@ async function renderDashboardV2() {
 
   let logsQuery = sb
     .from('arc_time_logs')
-    .select('*, arc_projects(project_name), arc_contracts!inner(id, contract_name, customer_id, arc_customers(company_name)), arc_profiles(name)')
+    .select('*, arc_projects(project_name), arc_contracts!inner(id, contract_name, customer_id, arc_customers(company_name))')
     .order('work_date', { ascending: false });
 
   if (isCustomer) logsQuery = logsQuery.eq('arc_contracts.customer_id', customerId);
@@ -1785,6 +1802,7 @@ async function renderDashboardV2() {
   const logs = logsRes.data;
   const safeContracts = contracts || [];
   const allLogs = logs || [];
+  const profileNames = await getArcProfileNameMap(allLogs.map(log => log.logged_by));
   const safeLogs = allLogs.slice(0, 5);
   const totalContracted = safeContracts.reduce((sum, c) => sum + (c.total_hours || 0), 0);
   const usedHours = allLogs.reduce((sum, log) => sum + (log.hours || 0), 0);
@@ -1837,7 +1855,7 @@ async function renderDashboardV2() {
         ${isCustomer ? '' : `<td>${log.arc_contracts?.arc_customers?.company_name || '—'}</td>`}
         <td>${log.arc_projects?.project_name || '—'}</td>
         <td>${formatCurrency(log.hours)}h</td>
-        <td>${log.arc_profiles?.name || 'Admin'}</td>
+        <td>${profileNames[log.logged_by] || 'Admin'}</td>
       </tr>
     `).join('')
     : `<tr><td colspan="${isCustomer ? 4 : 5}" style="text-align:center;padding:28px">No time logs yet.</td></tr>`;
@@ -2435,13 +2453,19 @@ async function deleteContract(id) {
 async function renderTimeLogs() {
   const { data: logs, error } = await sb
     .from('arc_time_logs')
-    .select('*, arc_projects(project_name), arc_contracts(id, arc_customers(company_name)), arc_profiles(name)')
+    .select('*, arc_projects(project_name), arc_contracts(id, arc_customers(company_name))')
     .order('created_at', { ascending: false });
 
   if (error) {
     document.getElementById('mainContent').innerHTML = `<div class="alert error show">Unable to load time logs: ${error.message}</div>`;
     return;
   }
+
+  const profileNames = await getArcProfileNameMap((logs || []).map(log => log.logged_by));
+  const normalizedLogs = (logs || []).map(log => ({
+    ...log,
+    arc_profiles: { name: profileNames[log.logged_by] || log.arc_profiles?.name || 'â€”' }
+  }));
 
   let html = `
     <div class="panel-title">⏱ Time Logs</div>
@@ -2453,8 +2477,8 @@ async function renderTimeLogs() {
         <tbody>
   `;
 
-  if (logs && logs.length > 0) {
-    html += logs.map(log => `
+  if (normalizedLogs.length > 0) {
+    html += normalizedLogs.map(log => `
       <tr>
         <td><strong>${log.arc_contracts?.arc_customers?.company_name || '—'}</strong></td>
         <td>${log.arc_projects?.project_name || '—'}</td>
