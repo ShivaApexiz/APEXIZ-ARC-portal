@@ -779,6 +779,77 @@ body {
   min-width: 220px;
 }
 
+.viewer-control-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.viewer-control-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.viewer-row-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--neutral-700);
+  min-width: max-content;
+}
+
+.viewer-sort-select {
+  width: min(100%, 286px);
+  min-width: 220px;
+}
+
+.viewer-filter-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  flex: 1 1 900px;
+  align-items: end;
+}
+
+.viewer-filter-controls .filter-chip {
+  gap: 6px;
+}
+
+.viewer-filter-controls .filter-chip-label {
+  display: none;
+}
+
+.viewer-toolbar-search {
+  min-width: 240px;
+}
+
+.page-action-btn {
+  width: auto;
+  min-width: 0;
+  padding: 10px 18px;
+  border-radius: 999px;
+}
+
+.table-action-btn,
+.toolbar-reset-btn {
+  border-radius: 999px;
+}
+
+.table-action-btn {
+  padding: 6px 12px;
+}
+
+.toolbar-reset-btn {
+  width: auto;
+  min-width: 0;
+  padding: 9px 14px;
+  margin-left: auto;
+}
+
 /* ── TABLE ── */
 .table-wrapper {
   background: var(--white);
@@ -1475,6 +1546,7 @@ const STATE = {
     actualMin: ''
   },
   projectSort: 'newest',
+  contractSort: 'updated',
   contractFilters: {
     customerId: '',
     activity: '',
@@ -2358,6 +2430,7 @@ async function renderContracts() {
   }
 
   const filters = STATE.contractFilters || {};
+  const contractSort = STATE.contractSort || 'updated';
   const today = new Date().toISOString().split('T')[0];
   const customerOptions = ['<option value="">All Customers</option>']
     .concat([...(new Map((contracts || []).map(contract => [contract.customer_id, contract.arc_customers?.company_name || 'Unknown'])))]
@@ -2380,53 +2453,67 @@ async function renderContracts() {
     return customerMatch && searchMatch && activityMatch && startMatch && endMatch && usedMatch && totalMatch && remainingMatch;
   });
 
+  const sortedContracts = [...filteredContracts].sort((left, right) => {
+    if (contractSort === 'oldest') {
+      return new Date(left.created_at || left.start_date || 0).getTime() - new Date(right.created_at || right.start_date || 0).getTime();
+    }
+    if (contractSort === 'name') {
+      return (left.contract_name || '').localeCompare(right.contract_name || '', undefined, { sensitivity: 'base' });
+    }
+    if (contractSort === 'newest') {
+      return new Date(right.created_at || right.start_date || 0).getTime() - new Date(left.created_at || left.start_date || 0).getTime();
+    }
+    return new Date(right.updated_at || right.created_at || right.start_date || 0).getTime() - new Date(left.updated_at || left.created_at || left.start_date || 0).getTime();
+  });
+
   let html = `
     <div class="panel-header">
       <div class="panel-title">Contracts</div>
-      <button class="btn btn-primary" onclick="openContractModal()">+ New Contract</button>
+      <button class="btn btn-primary page-action-btn" onclick="openContractModal()">+ New Contract</button>
     </div>
-    <div class="form-card">
-      <div class="filter-bar">
-        <div class="filter-chip">
-          <div class="filter-chip-label">Filters</div>
-          <input type="text" id="contractFilterSearch" class="form-input" placeholder="Search contract/customer" value="${filters.search || ''}">
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Customer</div>
-          <select id="contractFilterCustomer" class="form-select">${customerOptions}</select>
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Activity</div>
-          <select id="contractFilterActivity" class="form-select">
-            <option value="">All</option>
-            <option value="active" ${filters.activity === 'active' ? 'selected' : ''}>Active</option>
-            <option value="ended" ${filters.activity === 'ended' ? 'selected' : ''}>Ended</option>
-          </select>
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Start From</div>
-          <input type="date" id="contractFilterStartFrom" class="form-input" value="${filters.startFrom || ''}">
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">End To</div>
-          <input type="date" id="contractFilterEndTo" class="form-input" value="${filters.endTo || ''}">
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Used Hours</div>
-          <input type="number" id="contractFilterUsedMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.usedMin || ''}">
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Total Hours</div>
-          <input type="number" id="contractFilterTotalMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.totalMin || ''}">
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Remaining</div>
-          <input type="number" id="contractFilterRemainingMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.remainingMin || ''}">
-        </div>
+    <div class="viewer-control-stack">
+      <div class="viewer-control-row">
+        <div class="viewer-row-label">Sort Contracts</div>
+        <select id="contractSortControl" class="form-select viewer-sort-select" onchange="setContractSort(this.value)">
+          <option value="updated" ${contractSort === 'updated' ? 'selected' : ''}>Recently Updated</option>
+          <option value="newest" ${contractSort === 'newest' ? 'selected' : ''}>Newest First</option>
+          <option value="oldest" ${contractSort === 'oldest' ? 'selected' : ''}>Oldest First</option>
+          <option value="name" ${contractSort === 'name' ? 'selected' : ''}>Contract Name A-Z</option>
+        </select>
       </div>
-      <div class="btn-group" style="justify-content:flex-end">
-        <button class="btn btn-secondary" onclick="resetContractFilters()">Reset Filters</button>
-        <button class="btn btn-primary" onclick="applyContractFilters()">Apply Filters</button>
+      <div class="viewer-control-row">
+        <div class="viewer-row-label">Filters</div>
+        <div class="viewer-filter-controls">
+          <div class="filter-chip viewer-toolbar-search">
+            <input type="text" id="contractFilterSearch" class="form-input" placeholder="Search contract/customer" value="${filters.search || ''}" oninput="applyContractFilters()">
+          </div>
+          <div class="filter-chip">
+            <select id="contractFilterCustomer" class="form-select" onchange="applyContractFilters()">${customerOptions}</select>
+          </div>
+          <div class="filter-chip">
+            <select id="contractFilterActivity" class="form-select" onchange="applyContractFilters()">
+              <option value="">Activity: All</option>
+              <option value="active" ${filters.activity === 'active' ? 'selected' : ''}>Active</option>
+              <option value="ended" ${filters.activity === 'ended' ? 'selected' : ''}>Ended</option>
+            </select>
+          </div>
+          <div class="filter-chip">
+            <input type="date" id="contractFilterStartFrom" class="form-input" value="${filters.startFrom || ''}" onchange="applyContractFilters()">
+          </div>
+          <div class="filter-chip">
+            <input type="date" id="contractFilterEndTo" class="form-input" value="${filters.endTo || ''}" onchange="applyContractFilters()">
+          </div>
+          <div class="filter-chip">
+            <input type="number" id="contractFilterUsedMin" class="form-input" min="0" step="0.5" placeholder="Used Hours" value="${filters.usedMin || ''}" oninput="applyContractFilters()">
+          </div>
+          <div class="filter-chip">
+            <input type="number" id="contractFilterTotalMin" class="form-input" min="0" step="0.5" placeholder="Total Hours" value="${filters.totalMin || ''}" oninput="applyContractFilters()">
+          </div>
+          <div class="filter-chip">
+            <input type="number" id="contractFilterRemainingMin" class="form-input" min="0" step="0.5" placeholder="Remaining" value="${filters.remainingMin || ''}" oninput="applyContractFilters()">
+          </div>
+        </div>
+        <button class="btn btn-secondary toolbar-reset-btn" onclick="resetContractFilters()">Reset Filters</button>
       </div>
     </div>
     <div class="table-wrapper">
@@ -2437,8 +2524,8 @@ async function renderContracts() {
         <tbody>
   `;
 
-  if (filteredContracts.length > 0) {
-    html += filteredContracts.map(c => `
+  if (sortedContracts.length > 0) {
+    html += sortedContracts.map(c => `
       <tr>
         <td><strong>${c.contract_name || '?'}</strong></td>
         <td><strong>${c.arc_customers?.company_name || '?'}</strong></td>
@@ -2449,8 +2536,8 @@ async function renderContracts() {
         <td>${formatCurrency(Math.max((c.total_hours || 0) - (c.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0), 0))}</td>
         <td>${c.arc_projects?.length || 0}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="openProjectsModal('${c.id}')">Projects</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteContract('${c.id}')">Delete</button>
+          <button class="btn btn-sm btn-secondary table-action-btn" onclick="openProjectsModal('${c.id}')">Projects</button>
+          <button class="btn btn-sm btn-danger table-action-btn" onclick="deleteContract('${c.id}')">Delete</button>
         </td>
       </tr>
     `).join('');
@@ -2715,6 +2802,11 @@ function setProjectSort(sortValue) {
   renderProjects();
 }
 
+function setContractSort(sortValue) {
+  STATE.contractSort = sortValue || 'updated';
+  renderContracts();
+}
+
 function applyContractFilters() {
   STATE.contractFilters = {
     customerId: document.getElementById('contractFilterCustomer')?.value || '',
@@ -2890,8 +2982,8 @@ async function renderProjects() {
               </select>
             </td>
             <td>
-              <button class="btn btn-sm btn-secondary" onclick="openProjectModal('${project.id}')">Edit</button>
-              <button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}')">Delete</button>
+              <button class="btn btn-sm btn-secondary table-action-btn" onclick="openProjectModal('${project.id}')">Edit</button>
+              <button class="btn btn-sm btn-danger table-action-btn" onclick="deleteProject('${project.id}')">Delete</button>
             </td>
           </tr>
         `;
@@ -2901,64 +2993,52 @@ async function renderProjects() {
   main.innerHTML = `
     <div class="panel-header">
       <div class="panel-title">Projects</div>
-      <button class="btn btn-primary" onclick="openProjectModal()">+ New Project</button>
+      <button class="btn btn-primary page-action-btn" onclick="openProjectModal()">+ New Project</button>
     </div>
-    <div class="form-card">
-      <div class="project-toolbar">
-        <div class="filter-bar">
-          <div class="filter-chip">
-            <div class="filter-chip-label">Filters</div>
-            <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project/customer/contract" value="${filters.search || ''}">
+    <div class="viewer-control-stack">
+      <div class="viewer-control-row">
+        <div class="viewer-row-label">Sort Projects</div>
+        <select id="projectSortControl" class="form-select viewer-sort-select" onchange="setProjectSort(this.value)">
+          <option value="newest" ${projectSort === 'newest' ? 'selected' : ''}>Newest First</option>
+          <option value="oldest" ${projectSort === 'oldest' ? 'selected' : ''}>Oldest First</option>
+          <option value="name" ${projectSort === 'name' ? 'selected' : ''}>Project Name A-Z</option>
+          <option value="updated" ${projectSort === 'updated' ? 'selected' : ''}>Recently Updated</option>
+        </select>
+      </div>
+      <div class="viewer-control-row">
+        <div class="viewer-row-label">Filters</div>
+        <div class="viewer-filter-controls">
+          <div class="filter-chip viewer-toolbar-search">
+            <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project/customer/contract" value="${filters.search || ''}" oninput="applyProjectFilters()">
           </div>
           <div class="filter-chip">
-            <div class="filter-chip-label">Customer</div>
-            <select id="projectFilterCustomer" class="form-select">${customerOptions}</select>
+            <select id="projectFilterCustomer" class="form-select" onchange="applyProjectFilters()">${customerOptions}</select>
           </div>
           <div class="filter-chip">
-            <div class="filter-chip-label">Contract</div>
-            <select id="projectFilterContract" class="form-select">${contractOptions}</select>
+            <select id="projectFilterContract" class="form-select" onchange="applyProjectFilters()">${contractOptions}</select>
           </div>
           <div class="filter-chip">
-            <div class="filter-chip-label">Status</div>
-            <select id="projectFilterStatus" class="form-select">
-              <option value="">All</option>
+            <select id="projectFilterStatus" class="form-select" onchange="applyProjectFilters()">
+              <option value="">Status: All</option>
               <option value="active" ${filters.status === 'active' ? 'selected' : ''}>Active</option>
               <option value="paused" ${filters.status === 'paused' ? 'selected' : ''}>Paused</option>
               <option value="completed" ${filters.status === 'completed' ? 'selected' : ''}>Completed</option>
             </select>
           </div>
           <div class="filter-chip">
-            <div class="filter-chip-label">Start From</div>
-            <input type="date" id="projectFilterStartFrom" class="form-input" value="${filters.startFrom || ''}">
+            <input type="date" id="projectFilterStartFrom" class="form-input" value="${filters.startFrom || ''}" onchange="applyProjectFilters()">
           </div>
           <div class="filter-chip">
-            <div class="filter-chip-label">End To</div>
-            <input type="date" id="projectFilterEndTo" class="form-input" value="${filters.endTo || ''}">
+            <input type="date" id="projectFilterEndTo" class="form-input" value="${filters.endTo || ''}" onchange="applyProjectFilters()">
           </div>
           <div class="filter-chip">
-            <div class="filter-chip-label">Estimated Hours</div>
-            <input type="number" id="projectFilterEstimatedMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.estimatedMin || ''}">
+            <input type="number" id="projectFilterEstimatedMin" class="form-input" min="0" step="0.5" placeholder="Estimated Hours" value="${filters.estimatedMin || ''}" oninput="applyProjectFilters()">
           </div>
           <div class="filter-chip">
-            <div class="filter-chip-label">Actual Hours</div>
-            <input type="number" id="projectFilterActualMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.actualMin || ''}">
+            <input type="number" id="projectFilterActualMin" class="form-input" min="0" step="0.5" placeholder="Actual Hours" value="${filters.actualMin || ''}" oninput="applyProjectFilters()">
           </div>
         </div>
-        <div class="project-sort-control">
-          <div class="filter-chip">
-            <div class="filter-chip-label">Sort</div>
-            <select id="projectSortControl" class="form-select" onchange="setProjectSort(this.value)">
-              <option value="newest" ${projectSort === 'newest' ? 'selected' : ''}>Newest First</option>
-              <option value="oldest" ${projectSort === 'oldest' ? 'selected' : ''}>Oldest First</option>
-              <option value="name" ${projectSort === 'name' ? 'selected' : ''}>Project Name A-Z</option>
-              <option value="updated" ${projectSort === 'updated' ? 'selected' : ''}>Recently Updated</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      <div class="btn-group" style="justify-content:flex-end">
-        <button class="btn btn-secondary" onclick="resetProjectFilters()">Reset Filters</button>
-        <button class="btn btn-primary" onclick="applyProjectFilters()">Apply Filters</button>
+        <button class="btn btn-secondary toolbar-reset-btn" onclick="resetProjectFilters()">Reset Filters</button>
       </div>
     </div>
     <div class="table-wrapper">
