@@ -821,8 +821,8 @@ body {
 }
 
 .viewer-filter-controls-project {
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
-  flex: 1 1 980px;
+  grid-template-columns: repeat(auto-fit, minmax(156px, 1fr));
+  flex: 1 1 auto;
 }
 
 .viewer-filter-controls-project .viewer-toolbar-search {
@@ -835,12 +835,37 @@ body {
 }
 
 .viewer-control-row-project {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
   align-items: end;
+  column-gap: 14px;
+  row-gap: 12px;
+  width: 100%;
 }
 
 .viewer-control-row-project .toolbar-reset-btn {
   flex: 0 0 auto;
   margin-left: 0;
+}
+
+@media (max-width: 1500px) {
+  .viewer-filter-controls-project {
+    grid-template-columns: repeat(auto-fit, minmax(172px, 1fr));
+  }
+}
+
+@media (max-width: 1280px) {
+  .viewer-control-row-project {
+    grid-template-columns: 1fr;
+  }
+
+  .viewer-filter-controls-project .viewer-toolbar-search {
+    grid-column: span 1;
+  }
+
+  .viewer-control-row-project .toolbar-reset-btn {
+    justify-self: start;
+  }
 }
 
 .viewer-filter-controls .filter-chip {
@@ -3688,4 +3713,3 @@ window.addEventListener('load', async () => {
 </script>
 </body>
 </html>
-
