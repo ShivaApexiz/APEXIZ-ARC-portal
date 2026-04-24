@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>APEXIZ — Annual Resource Contract Hours Tracker</title>
+<title>APEXIZ â€” Annual Resource Contract Hours Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -39,11 +39,11 @@ body {
   flex-direction: column;
 }
 
-/* ── PAGES ── */
+/* â”€â”€ PAGES â”€â”€ */
 .page { width: 100vw; height: 100vh; display: none; flex-direction: column; overflow: hidden; }
 .page.active { display: flex; }
 
-/* ── TOPBAR ── */
+/* â”€â”€ TOPBAR â”€â”€ */
 .topbar {
   background: var(--white);
   height: 70px;
@@ -92,7 +92,7 @@ body {
 }
 
 .topbar-brand::before {
-  content: '⏱';
+  content: 'â±';
   font-size: 18px;
 }
 
@@ -155,7 +155,7 @@ body {
 .role-tag.admin { background: var(--dark); color: var(--white); }
 .role-tag.customer { background: var(--neutral-200); color: var(--neutral-700); }
 
-/* ── FOOTER ── */
+/* â”€â”€ FOOTER â”€â”€ */
 .footer {
   background: var(--white);
   height: 40px;
@@ -170,7 +170,7 @@ body {
   flex-shrink: 0;
 }
 
-/* ── PAGE BODY ── */
+/* â”€â”€ PAGE BODY â”€â”€ */
 .page-body {
   flex: 1;
   overflow-y: auto;
@@ -183,7 +183,7 @@ body {
 .page-body::-webkit-scrollbar-thumb { background: var(--neutral-300); border-radius: 3px; }
 .page-body::-webkit-scrollbar-track { background: transparent; }
 
-/* ── LAYOUT ── */
+/* â”€â”€ LAYOUT â”€â”€ */
 .dashboard-layout {
   display: flex;
   height: 100%;
@@ -446,7 +446,7 @@ body {
   }
 }
 
-/* ── AUTH PAGE ── */
+/* â”€â”€ AUTH PAGE â”€â”€ */
 #authPage .page-body {
   align-items: center;
   justify-content: center;
@@ -602,7 +602,7 @@ body {
   display: block;
 }
 
-/* ── DASHBOARD CARDS ── */
+/* â”€â”€ DASHBOARD CARDS â”€â”€ */
 .cards-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -661,7 +661,7 @@ body {
   background: linear-gradient(135deg, rgba(30,142,62,0.05) 0%, transparent 100%);
 }
 
-/* ── PROGRESS BAR ── */
+/* â”€â”€ PROGRESS BAR â”€â”€ */
 .progress-container {
   margin-top: 8px;
 }
@@ -685,7 +685,7 @@ body {
 .progress-fill.critical { background: var(--critical); }
 .progress-fill.success { background: var(--success); }
 
-/* ── PANEL TITLE ── */
+/* â”€â”€ PANEL TITLE â”€â”€ */
 .panel-title {
   font-size: 18px;
   font-weight: 700;
@@ -865,6 +865,38 @@ body {
   box-sizing: border-box;
 }
 
+.viewer-filter-controls-contract,
+.viewer-filter-controls-customer {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  align-items: end;
+}
+
+.viewer-filter-controls-contract {
+  grid-template-columns: repeat(8, minmax(84px, 1fr));
+}
+
+.viewer-filter-controls-customer {
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+}
+
+.viewer-filter-controls-contract .filter-chip,
+.viewer-filter-controls-customer .filter-chip {
+  min-width: 0;
+  width: 100%;
+}
+
+.viewer-filter-controls-contract input,
+.viewer-filter-controls-contract select,
+.viewer-filter-controls-customer input,
+.viewer-filter-controls-customer select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  box-sizing: border-box;
+}
+
 .viewer-control-row-project {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) auto;
@@ -935,6 +967,14 @@ body {
   .viewer-filter-controls-project {
     grid-template-columns: repeat(4, minmax(140px, 1fr));
   }
+
+  .viewer-filter-controls-contract {
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+  }
+
+  .viewer-filter-controls-customer {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
 }
 
 @media (max-width: 900px) {
@@ -949,11 +989,17 @@ body {
   .viewer-filter-controls-project {
     grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
+
+  .viewer-filter-controls-contract {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
 }
 
 @media (max-width: 768px) {
   .filter-bar,
-  .viewer-filter-controls-project {
+  .viewer-filter-controls-project,
+  .viewer-filter-controls-contract,
+  .viewer-filter-controls-customer {
     grid-template-columns: 1fr;
   }
 
@@ -966,7 +1012,7 @@ body {
   }
 }
 
-/* ── TABLE ── */
+/* â”€â”€ TABLE â”€â”€ */
 .table-wrapper {
   background: var(--white);
   border: 1px solid var(--neutral-200);
@@ -1020,7 +1066,7 @@ body {
 .badge.inactive { background: var(--neutral-100); color: var(--neutral-700); }
 .badge.critical { background: #FEE; color: var(--critical); }
 
-/* ── BUTTONS ── */
+/* â”€â”€ BUTTONS â”€â”€ */
 .btn {
   padding: 8px 14px;
   border: none;
@@ -1065,7 +1111,7 @@ body {
   align-items: center;
 }
 
-/* ── FORM ── */
+/* â”€â”€ FORM â”€â”€ */
 .form-card {
   background: var(--white);
   border: 1px solid var(--neutral-200);
@@ -1140,7 +1186,7 @@ body {
   border-color: var(--primary);
 }
 
-/* ── MODAL ── */
+/* â”€â”€ MODAL â”€â”€ */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1192,7 +1238,7 @@ body {
   color: var(--critical);
 }
 
-/* ── EMPTY STATE ── */
+/* â”€â”€ EMPTY STATE â”€â”€ */
 .empty-state {
   text-align: center;
   padding: 40px 20px;
@@ -1210,7 +1256,7 @@ body {
   line-height: 1.6;
 }
 
-/* ── LOADING ── */
+/* â”€â”€ LOADING â”€â”€ */
 #loadingOverlay {
   position: fixed;
   inset: 0;
@@ -1247,7 +1293,7 @@ body {
   letter-spacing: 1px;
 }
 
-/* ── ALERTS ── */
+/* â”€â”€ ALERTS â”€â”€ */
 .alert {
   padding: 12px 14px;
   border-radius: 6px;
@@ -1262,7 +1308,7 @@ body {
 .alert.error { background: #FEE; color: var(--critical); border-left: 3px solid var(--critical); }
 .alert.success { background: #EFE; color: var(--success); border-left: 3px solid var(--success); }
 
-/* ── RESPONSIVE LAYOUT FIXES ── */
+/* â”€â”€ RESPONSIVE LAYOUT FIXES â”€â”€ */
 .dashboard-body {
   display: flex;
   flex-direction: row;
@@ -1495,7 +1541,7 @@ body {
 </head>
 <body>
 
-<!-- ══ AUTH PAGE ══ -->
+<!-- â•â• AUTH PAGE â•â• -->
 <div id="authPage" class="page active">
   <div class="topbar">
     <div class="topbar-left">
@@ -1522,7 +1568,7 @@ body {
             <path d="M 60 60 Q 75 75 85 85" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
           </svg>
         </div>
-        <div class="auth-logo-text">⏱ APEXIZ</div>
+        <div class="auth-logo-text">â± APEXIZ</div>
         <div class="auth-title" id="authTitle">Sign In</div>
         <div class="auth-sub">Annual Resource Contract Hours Tracker</div>
       </div>
@@ -1533,9 +1579,9 @@ body {
         </div>
         <div class="form-group">
           <label class="form-label">Password</label>
-          <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+          <input type="password" id="loginPassword" class="form-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required>
         </div>
-        <button type="submit" class="btn-primary">Sign In →</button>
+        <button type="submit" class="btn-primary">Sign In â†’</button>
         <button type="button" class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="requestPasswordReset()">Forgot Password</button>
         <div id="loginMsg" class="auth-msg"></div>
       </form>
@@ -1548,15 +1594,15 @@ body {
           <label class="form-label">Confirm Password</label>
           <input type="password" id="setupPasswordConfirm" class="form-input" placeholder="Re-enter password" required minlength="6">
         </div>
-        <button type="submit" class="btn-primary">Set Password →</button>
+        <button type="submit" class="btn-primary">Set Password â†’</button>
         <div id="setupMsg" class="auth-msg"></div>
       </form>
     </div>
   </div>
-  <div class="footer">© 2026 APEXIZ • CONFIDENTIAL INFORMATION • ALL RIGHTS RESERVED</div>
+  <div class="footer">Â© 2026 APEXIZ â€¢ CONFIDENTIAL INFORMATION â€¢ ALL RIGHTS RESERVED</div>
 </div>
 
-<!-- ══ DASHBOARD PAGE ══ -->
+<!-- â•â• DASHBOARD PAGE â•â• -->
 <div id="dashPage" class="page">
   <div class="topbar">
     <div class="topbar-left">
@@ -1590,25 +1636,25 @@ body {
   <div class="page-body dashboard-body">
     <div class="sidebar">
       <div class="nav-section">Navigation</div>
-      <button class="nav-item active" id="navDash" onclick="showPanel('dashboard')">📊 Dashboard</button>
+      <button class="nav-item active" id="navDash" onclick="showPanel('dashboard')">ðŸ“Š Dashboard</button>
       
       <div id="adminNav" style="display: none;">
         <div class="nav-section">Admin</div>
-        <button class="nav-item" id="navCustomers" onclick="showPanel('customers')">🏢 Customers</button>
-        <button class="nav-item" id="navContracts" onclick="showPanel('contracts')">📋 Contracts</button>
-        <button class="nav-item" id="navLogtime" onclick="showPanel('logtime')">➕ Log Time</button>
-        <button class="nav-item" id="navTimeLogs" onclick="showPanel('timelogs')">⏱ Time Logs</button>
-        <button class="nav-item" id="navReports" onclick="showPanel('reports')">📊 Reports</button>
+        <button class="nav-item" id="navCustomers" onclick="showPanel('customers')">ðŸ¢ Customers</button>
+        <button class="nav-item" id="navContracts" onclick="showPanel('contracts')">ðŸ“‹ Contracts</button>
+        <button class="nav-item" id="navLogtime" onclick="showPanel('logtime')">âž• Log Time</button>
+        <button class="nav-item" id="navTimeLogs" onclick="showPanel('timelogs')">â± Time Logs</button>
+        <button class="nav-item" id="navReports" onclick="showPanel('reports')">ðŸ“Š Reports</button>
       </div>
 
       <div id="customerNav" style="display: none;">
         <div class="nav-section">Account</div>
-        <button class="nav-item" id="navMyContract" onclick="showPanel('mycontract')">📋 My Contract</button>
-        <button class="nav-item" id="navMyHours" onclick="showPanel('myhours')">⏱ Hours Usage</button>
+        <button class="nav-item" id="navMyContract" onclick="showPanel('mycontract')">ðŸ“‹ My Contract</button>
+        <button class="nav-item" id="navMyHours" onclick="showPanel('myhours')">â± Hours Usage</button>
       </div>
 
       <div class="nav-divider"></div>
-      <button class="logout-btn" onclick="doLogout()">↩ Sign Out</button>
+      <button class="logout-btn" onclick="doLogout()">â†© Sign Out</button>
     </div>
 
     <div class="main-content" id="mainContent">
@@ -1616,34 +1662,34 @@ body {
     </div>
   </div>
 
-  <div class="footer">© 2026 APEXIZ • CONFIDENTIAL • ALL RIGHTS RESERVED</div>
+  <div class="footer">Â© 2026 APEXIZ â€¢ CONFIDENTIAL â€¢ ALL RIGHTS RESERVED</div>
 </div>
 
-<!-- ══ MODALS ══ -->
+<!-- â•â• MODALS â•â• -->
 <div id="modalOverlay" class="modal-overlay">
   <div class="modal" id="modalContent">
     <!-- Modal content loaded dynamically -->
   </div>
 </div>
 
-<!-- ══ LOADING ══ -->
+<!-- â•â• LOADING â•â• -->
 <div id="loadingOverlay">
   <div class="spinner"></div>
-  <div class="loading-text" id="loadingText">Loading…</div>
+  <div class="loading-text" id="loadingText">Loadingâ€¦</div>
 </div>
 
 <script>
-/* ══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    SUPABASE INIT
-══════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const SUPABASE_URL = 'https://yjmulcovzttnytmondlh.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqbXVsY292enR0bnl0bW9uZGxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NDQ2NjAsImV4cCI6MjA5MDUyMDY2MH0.y9su7u4vhJnJ1grSUgaJaQSbIC8bmgYsG44TXyq4trE';
 const AUTH_REDIRECT_URL = 'https://shivaapexiz.github.io/APEXIZ-ARC-portal/';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-/* ══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    STATE
-══════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 const STATE = {
   user: null,
   profile: null,
@@ -1663,6 +1709,7 @@ const STATE = {
   },
   projectSort: 'newest',
   contractSort: 'updated',
+  customerSort: 'newest',
   contractFilters: {
     customerId: '',
     activity: '',
@@ -1672,6 +1719,11 @@ const STATE = {
     usedMin: '',
     totalMin: '',
     remainingMin: ''
+  },
+  customerFilters: {
+    search: '',
+    country: '',
+    status: ''
   }
 };
 
@@ -1754,15 +1806,15 @@ const COUNTRIES = [
   ['Vietnam', '+84']
 ];
 
-/* ══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    UTILITIES
-══════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
-function loading(show, text = 'Loading…') {
+function loading(show, text = 'Loadingâ€¦') {
   const el = document.getElementById('loadingOverlay');
   document.getElementById('loadingText').innerText = text;
   el.classList.toggle('show', show);
@@ -1839,9 +1891,9 @@ function updateMobileCountryCode() {
   codeInput.value = countrySelect.selectedOptions[0]?.dataset.code || '';
 }
 
-/* ══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    AUTH
-══════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 async function getArcProfileNameMap(userIds = []) {
   const ids = [...new Set((userIds || []).filter(Boolean))];
   if (!ids.length) return {};
@@ -1864,7 +1916,7 @@ async function doLogin(e) {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPassword').value;
   
-  loading(true, 'Signing in…');
+  loading(true, 'Signing inâ€¦');
   
   try {
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
@@ -2031,9 +2083,9 @@ function routeUser(profile) {
   showPanel('dashboard');
 }
 
-/* ══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    PANELS
-══════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 async function showPanel(name) {
   STATE.currentPanel = name;
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -2041,7 +2093,7 @@ async function showPanel(name) {
   if (navEl) navEl.classList.add('active');
 
   const main = document.getElementById('mainContent');
-  main.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div></div>';
+  main.innerHTML = '<div class="empty-state"><div class="empty-state-icon">â³</div></div>';
 
   if (name === 'dashboard') await renderDashboardV2();
   else if (name === 'customers') await renderCustomers();
@@ -2054,7 +2106,7 @@ async function showPanel(name) {
   else if (name === 'myhours') await renderMyHours();
 }
 
-/* ── DASHBOARD ── */
+/* â”€â”€ DASHBOARD â”€â”€ */
 async function renderDashboardV2() {
   const main = document.getElementById('mainContent');
   const isCustomer = STATE.profile.role === 'customer';
@@ -2173,8 +2225,8 @@ async function renderDashboardV2() {
     ? safeLogs.map(log => `
       <tr>
         <td>${formatDate(log.work_date)}</td>
-        ${isCustomer ? '' : `<td>${log.arc_contracts?.arc_customers?.company_name || '—'}</td>`}
-        <td>${log.arc_projects?.project_name || '—'}</td>
+        ${isCustomer ? '' : `<td>${log.arc_contracts?.arc_customers?.company_name || 'â€”'}</td>`}
+        <td>${log.arc_projects?.project_name || 'â€”'}</td>
         <td>${formatCurrency(log.hours)}h</td>
         <td>${profileNames[log.logged_by] || 'Admin'}</td>
       </tr>
@@ -2186,8 +2238,8 @@ async function renderDashboardV2() {
       const used = usedByContract[c.id] || 0;
       return `
         <tr>
-          <td>${c.contract_name || '—'}</td>
-          <td>${c.arc_customers?.company_name || '—'}</td>
+          <td>${c.contract_name || 'â€”'}</td>
+          <td>${c.arc_customers?.company_name || 'â€”'}</td>
           <td>${formatDate(c.start_date)}</td>
           <td>${formatDate(c.end_date)}</td>
           <td>${c.arc_projects?.length || 0}</td>
@@ -2264,10 +2316,10 @@ async function renderDashboard() {
       .eq('customer_id', STATE.profile.customer_id)
       .order('start_date', { ascending: false });
 
-    let html = '<div class="panel-title">📊 Dashboard</div>';
+    let html = '<div class="panel-title">ðŸ“Š Dashboard</div>';
 
     if (!contracts || contracts.length === 0) {
-      html += '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No active contracts found.</div></div>';
+      html += '<div class="empty-state"><div class="empty-state-icon">ðŸ“‹</div><div class="empty-state-text">No active contracts found.</div></div>';
     } else {
       const contract = contracts[0];
       const { data: logs } = await sb
@@ -2304,7 +2356,7 @@ async function renderDashboard() {
       `;
 
       if (pctUsed >= 90) {
-        html += `<div class="alert warning show"><strong>⚠️ High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
+        html += `<div class="alert warning show"><strong>âš ï¸ High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
       }
     }
 
@@ -2317,7 +2369,7 @@ async function renderDashboard() {
     const totalHours = contracts?.reduce((sum, c) => sum + (c.total_hours || 0), 0) || 0;
     const usedHours = logs?.reduce((sum, l) => sum + (l.hours || 0), 0) || 0;
 
-    let html = `<div class="panel-title">📊 Dashboard</div>
+    let html = `<div class="panel-title">ðŸ“Š Dashboard</div>
       <div class="cards-grid">
         <div class="card">
           <div class="card-label">Total Customers</div>
@@ -2344,9 +2396,71 @@ async function renderDashboard() {
 async function renderCustomers() {
   const { data: customers } = await sb.from('arc_customers').select('*').order('created_at', { ascending: false });
 
+  const filters = STATE.customerFilters || {};
+  const customerSort = STATE.customerSort || 'newest';
+  const countryOptions = ['<option value="">All Countries</option>']
+    .concat([...(new Set((customers || []).map(customer => customer.country).filter(Boolean)))]
+      .sort((left, right) => left.localeCompare(right))
+      .map(country => `<option value="${country}" ${filters.country === country ? 'selected' : ''}>${country}</option>`))
+    .join('');
+
+  const filteredCustomers = (customers || []).filter(customer => {
+    const status = (customer.status || 'active').toLowerCase();
+    const searchMatch = !filters.search || [customer.company_name, customer.country, customer.contact_person, customer.email]
+      .some(value => (value || '').toLowerCase().includes(filters.search));
+    const countryMatch = !filters.country || customer.country === filters.country;
+    const statusMatch = !filters.status || status === filters.status;
+    return searchMatch && countryMatch && statusMatch;
+  });
+
+  const sortedCustomers = [...filteredCustomers].sort((left, right) => {
+    if (customerSort === 'oldest') {
+      return new Date(left.created_at || 0).getTime() - new Date(right.created_at || 0).getTime();
+    }
+    if (customerSort === 'name') {
+      return (left.company_name || '').localeCompare(right.company_name || '', undefined, { sensitivity: 'base' });
+    }
+    if (customerSort === 'status') {
+      return ((left.status || 'active').toLowerCase()).localeCompare((right.status || 'active').toLowerCase());
+    }
+    return new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime();
+  });
+
   let html = `
-    <div class="panel-title">🏢 Customers</div>
-    <button class="btn btn-primary" onclick="openCustomerModal()">+ New Customer</button>
+    <div class="panel-header">
+      <div class="panel-title">Customers</div>
+      <button class="btn btn-primary page-action-btn" onclick="openCustomerModal()">+ New Customer</button>
+    </div>
+    <div class="viewer-control-stack">
+      <div class="viewer-control-row">
+        <div class="viewer-row-label">Sort Customers</div>
+        <select id="customerSortControl" class="form-select viewer-sort-select" onchange="setCustomerSort(this.value)">
+          <option value="newest" ${customerSort === 'newest' ? 'selected' : ''}>Newest First</option>
+          <option value="oldest" ${customerSort === 'oldest' ? 'selected' : ''}>Oldest First</option>
+          <option value="name" ${customerSort === 'name' ? 'selected' : ''}>Customer Name A-Z</option>
+          <option value="status" ${customerSort === 'status' ? 'selected' : ''}>Status</option>
+        </select>
+      </div>
+      <div class="viewer-control-row viewer-control-row-project">
+        <div class="viewer-row-label">Filters</div>
+        <div class="viewer-filter-controls-customer">
+          <div class="filter-chip viewer-toolbar-search">
+            <input type="text" id="customerFilterSearch" class="form-input" placeholder="Search customer/contact/email" value="${filters.search || ''}" oninput="applyCustomerFilters()">
+          </div>
+          <div class="filter-chip">
+            <select id="customerFilterCountry" class="form-select" onchange="applyCustomerFilters()">${countryOptions}</select>
+          </div>
+          <div class="filter-chip">
+            <select id="customerFilterStatus" class="form-select" onchange="applyCustomerFilters()">
+              <option value="">Status: All</option>
+              <option value="active" ${filters.status === 'active' ? 'selected' : ''}>Active</option>
+              <option value="inactive" ${filters.status === 'inactive' ? 'selected' : ''}>Inactive</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-secondary toolbar-reset-btn" onclick="resetCustomerFilters()">Reset Filters</button>
+      </div>
+    </div>
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
@@ -2355,21 +2469,21 @@ async function renderCustomers() {
         <tbody>
   `;
 
-  if (customers && customers.length > 0) {
-    html += customers.map(c => {
+  if (sortedCustomers.length > 0) {
+    html += sortedCustomers.map(c => {
       const status = (c.status || 'active').toLowerCase();
       const nextStatus = status === 'active' ? 'inactive' : 'active';
       return `
       <tr>
         <td><strong>${c.company_name}</strong></td>
-        <td>${c.country || '—'}</td>
-        <td>${c.contact_person || '—'}</td>
-        <td>${c.email || '—'}</td>
-        <td>${[c.contact_mobile_country_code, c.contact_mobile].filter(Boolean).join(' ') || '—'}</td>
+        <td>${c.country || '-'}</td>
+        <td>${c.contact_person || '-'}</td>
+        <td>${c.email || '-'}</td>
+        <td>${[c.contact_mobile_country_code, c.contact_mobile].filter(Boolean).join(' ') || '-'}</td>
         <td><span class="badge ${status}">${status.toUpperCase()}</span></td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="toggleCustomerStatus('${c.id}', '${status}')">${nextStatus === 'active' ? 'Activate' : 'Deactivate'}</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteCustomer('${c.id}')">Delete</button>
+          <button class="btn btn-sm btn-secondary table-action-btn" onclick="toggleCustomerStatus('${c.id}', '${status}')">${nextStatus === 'active' ? 'Activate' : 'Deactivate'}</button>
+          <button class="btn btn-sm btn-danger table-action-btn" onclick="deleteCustomer('${c.id}')">Delete</button>
         </td>
       </tr>
     `;
@@ -2387,7 +2501,7 @@ async function openCustomerModal() {
   modal.innerHTML = `
     <div class="modal-title">
       <span>New Customer</span>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      <button class="modal-close" onclick="closeModal()">âœ•</button>
     </div>
     <div class="form-card">
       <div class="form-group">
@@ -2420,7 +2534,7 @@ async function openCustomerModal() {
           <input type="tel" id="custMobile" class="form-input" placeholder="9876543210">
         </div>
       </div>
-      <button class="btn btn-primary" onclick="saveCustomer()">Register Customer →</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">Register Customer â†’</button>
       <div id="customerMsg" class="auth-msg"></div>
     </div>
   `;
@@ -2502,7 +2616,7 @@ async function saveCustomer() {
 async function deleteCustomer(id) {
   if (!confirm('Delete this customer, its login account, contracts, projects, and time logs? This cannot be undone.')) return;
 
-  loading(true, 'Deleting…');
+  loading(true, 'Deletingâ€¦');
   const { error } = await sb.rpc('delete_arc_customer', { target_customer_id: id });
   loading(false);
 
@@ -2533,7 +2647,7 @@ async function toggleCustomerStatus(id, currentStatus) {
   showPanel('customers');
 }
 
-/* ── CONTRACTS (ADMIN) ── */
+/* â”€â”€ CONTRACTS (ADMIN) â”€â”€ */
 async function renderContracts() {
   const { data: contracts, error } = await sb
     .from('arc_contracts')
@@ -2597,9 +2711,9 @@ async function renderContracts() {
           <option value="name" ${contractSort === 'name' ? 'selected' : ''}>Contract Name A-Z</option>
         </select>
       </div>
-      <div class="viewer-control-row">
+      <div class="viewer-control-row viewer-control-row-project">
         <div class="viewer-row-label">Filters</div>
-        <div class="viewer-filter-controls">
+        <div class="viewer-filter-controls-contract">
           <div class="filter-chip viewer-toolbar-search">
             <input type="text" id="contractFilterSearch" class="form-input" placeholder="Search contract/customer" value="${filters.search || ''}" oninput="applyContractFilters()">
           </div>
@@ -2677,7 +2791,7 @@ async function openContractModal() {
   modal.innerHTML = `
     <div class="modal-title">
       <span>New Contract</span>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+      <button class="modal-close" onclick="closeModal()">âœ•</button>
     </div>
     <div class="form-card">
       <div class="form-group">
@@ -2704,9 +2818,9 @@ async function openContractModal() {
       </div>
       <div class="form-group">
         <label class="form-label">Notes</label>
-        <textarea id="contractNotes" class="form-textarea" placeholder="Optional notes…"></textarea>
+        <textarea id="contractNotes" class="form-textarea" placeholder="Optional notesâ€¦"></textarea>
       </div>
-      <button class="btn btn-primary" onclick="saveContract()">Create Contract →</button>
+      <button class="btn btn-primary" onclick="saveContract()">Create Contract â†’</button>
     </div>
   `;
   document.getElementById('modalOverlay').classList.add('open');
@@ -2725,7 +2839,7 @@ async function saveContract() {
     return;
   }
 
-  loading(true, 'Saving…');
+  loading(true, 'Savingâ€¦');
 
   const { error } = await sb.from('arc_contracts').insert({
     contract_name: contractName,
@@ -2764,7 +2878,7 @@ async function openProjectsModal(contractId) {
         <td><strong>${project.project_name}</strong></td>
         <td>${project.status || 'active'}</td>
         <td>${formatCurrency(project.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0)}</td>
-        <td>${project.notes || '—'}</td>
+        <td>${project.notes || 'â€”'}</td>
         <td><button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}', '${contractId}')">Delete</button></td>
       </tr>
     `).join('')
@@ -2854,13 +2968,13 @@ async function deleteProject(projectId, contractId) {
 async function deleteContract(id) {
   if (!confirm('Delete this contract? This cannot be undone.')) return;
 
-  loading(true, 'Deleting…');
+  loading(true, 'Deletingâ€¦');
   await sb.from('arc_contracts').delete().eq('id', id);
   loading(false);
   showPanel('contracts');
 }
 
-/* ── TIME LOGS (ADMIN VIEW) ── */
+/* â”€â”€ TIME LOGS (ADMIN VIEW) â”€â”€ */
 async function fetchProjectScreenData() {
   const [contractsRes, projectsRes, logsRes] = await Promise.all([
     sb.from('arc_contracts').select('id, contract_name, customer_id, arc_customers(company_name)').order('start_date', { ascending: false }),
@@ -2923,6 +3037,11 @@ function setContractSort(sortValue) {
   renderContracts();
 }
 
+function setCustomerSort(sortValue) {
+  STATE.customerSort = sortValue || 'newest';
+  renderCustomers();
+}
+
 function applyContractFilters() {
   STATE.contractFilters = {
     customerId: document.getElementById('contractFilterCustomer')?.value || '',
@@ -2940,6 +3059,20 @@ function applyContractFilters() {
 function resetContractFilters() {
   STATE.contractFilters = { customerId: '', activity: '', search: '', startFrom: '', endTo: '', usedMin: '', totalMin: '', remainingMin: '' };
   renderContracts();
+}
+
+function applyCustomerFilters() {
+  STATE.customerFilters = {
+    search: (document.getElementById('customerFilterSearch')?.value || '').trim().toLowerCase(),
+    country: document.getElementById('customerFilterCountry')?.value || '',
+    status: document.getElementById('customerFilterStatus')?.value || ''
+  };
+  renderCustomers();
+}
+
+function resetCustomerFilters() {
+  STATE.customerFilters = { search: '', country: '', status: '' };
+  renderCustomers();
 }
 
 function renderProjectForm(contractOptions, project = {}, actualHours = 0) {
@@ -3314,11 +3447,11 @@ async function renderTimeLogs() {
   const profileNames = await getArcProfileNameMap((logs || []).map(log => log.logged_by));
   const normalizedLogs = (logs || []).map(log => ({
     ...log,
-    arc_profiles: { name: profileNames[log.logged_by] || log.arc_profiles?.name || 'â€”' }
+    arc_profiles: { name: profileNames[log.logged_by] || log.arc_profiles?.name || 'Ã¢â‚¬â€' }
   }));
 
   let html = `
-    <div class="panel-title">⏱ Time Logs</div>
+    <div class="panel-title">â± Time Logs</div>
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
@@ -3330,13 +3463,13 @@ async function renderTimeLogs() {
   if (normalizedLogs.length > 0) {
     html += normalizedLogs.map(log => `
       <tr>
-        <td><strong>${log.arc_contracts?.arc_customers?.company_name || '—'}</strong></td>
-        <td>${log.arc_projects?.project_name || '—'}</td>
-        <td>${log.task_name || '—'}</td>
+        <td><strong>${log.arc_contracts?.arc_customers?.company_name || 'â€”'}</strong></td>
+        <td>${log.arc_projects?.project_name || 'â€”'}</td>
+        <td>${log.task_name || 'â€”'}</td>
         <td>${formatDate(log.work_date)}</td>
         <td><strong>${formatCurrency(log.hours)}</strong></td>
-        <td>${log.arc_profiles?.name || '—'}</td>
-        <td>${log.description ? log.description.substring(0, 40) + '...' : '—'}</td>
+        <td>${log.arc_profiles?.name || 'â€”'}</td>
+        <td>${log.description ? log.description.substring(0, 40) + '...' : 'â€”'}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="editTimeLog('${log.id}')">Edit</button>
           <button class="btn btn-sm btn-danger" onclick="deleteTimeLog('${log.id}')">Delete</button>
@@ -3354,13 +3487,13 @@ async function renderTimeLogs() {
 async function deleteTimeLog(id) {
   if (!confirm('Delete this time log entry?')) return;
 
-  loading(true, 'Deleting…');
+  loading(true, 'Deletingâ€¦');
   await sb.from('arc_time_logs').delete().eq('id', id);
   loading(false);
   showPanel('timelogs');
 }
 
-/* ── LOG TIME (ADMIN) ── */
+/* â”€â”€ LOG TIME (ADMIN) â”€â”€ */
 async function renderLogTime() {
   const today = new Date().toISOString().split('T')[0];
   const [contractsRes, projectsRes] = await Promise.all([
@@ -3486,14 +3619,14 @@ async function renderMyContract() {
   let html = '<div class="panel-title">Customer Contracts</div>';
 
   if (!contracts || contracts.length === 0) {
-    html += '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No active contracts found.</div></div>';
+    html += '<div class="empty-state"><div class="empty-state-icon">ðŸ“‹</div><div class="empty-state-text">No active contracts found.</div></div>';
   } else {
     const c = contracts[0];
     html += `
       <div class="form-card">
         <div class="form-group">
           <label class="form-label">Contract Period</label>
-          <input type="text" class="form-input" value="${formatDate(c.start_date)} – ${formatDate(c.end_date)}" readonly>
+          <input type="text" class="form-input" value="${formatDate(c.start_date)} â€“ ${formatDate(c.end_date)}" readonly>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -3509,7 +3642,7 @@ async function renderMyContract() {
   document.getElementById('mainContent').innerHTML = html;
 }
 
-/* ── MY HOURS (CUSTOMER) ── */
+/* â”€â”€ MY HOURS (CUSTOMER) â”€â”€ */
 async function renderMyHours() {
   const { data: contracts } = await sb
     .from('arc_contracts')
@@ -3517,10 +3650,10 @@ async function renderMyHours() {
     .eq('customer_id', STATE.profile.customer_id)
     .order('start_date', { ascending: false });
 
-  let html = '<div class="panel-title">⏱ Hours Usage</div>';
+  let html = '<div class="panel-title">â± Hours Usage</div>';
 
   if (!contracts || contracts.length === 0) {
-    html += '<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No active contracts found.</div></div>';
+    html += '<div class="empty-state"><div class="empty-state-icon">ðŸ“‹</div><div class="empty-state-text">No active contracts found.</div></div>';
   } else {
     const c = contracts[0];
     const { data: logs } = await sb
@@ -3558,7 +3691,7 @@ async function renderMyHours() {
     `;
 
     if (pctUsed >= 90) {
-      html += `<div class="alert warning show"><strong>⚠️ High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
+      html += `<div class="alert warning show"><strong>âš ï¸ High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
     }
 
     html += '<div class="panel-title" style="margin-top:24px">Time Log History</div><div class="table-wrapper"><table class="data-table"><thead><tr><th>Date</th><th>Project</th><th>Description</th><th>Hours</th><th>Comments</th></tr></thead><tbody>';
@@ -3567,10 +3700,10 @@ async function renderMyHours() {
       html += logs.map(log => `
         <tr>
           <td>${formatDate(log.work_date)}</td>
-          <td><strong>${log.arc_projects?.project_name || '—'}</strong></td>
-          <td>${log.task_name || '—'}</td>
+          <td><strong>${log.arc_projects?.project_name || 'â€”'}</strong></td>
+          <td>${log.task_name || 'â€”'}</td>
           <td><strong>${formatCurrency(log.hours)}</strong></td>
-          <td>${log.comments || log.description || '—'}</td>
+          <td>${log.comments || log.description || 'â€”'}</td>
         </tr>
       `).join('');
     } else {
@@ -3580,19 +3713,19 @@ async function renderMyHours() {
     html += '</tbody></table></div>';
 
     if (logs && logs.length > 0) {
-      html += `<button class="btn btn-primary" onclick="exportToExcel()">📊 Export to Excel</button>`;
+      html += `<button class="btn btn-primary" onclick="exportToExcel()">ðŸ“Š Export to Excel</button>`;
     }
   }
 
   document.getElementById('mainContent').innerHTML = html;
 }
 
-/* ── REPORTS (ADMIN) ── */
+/* â”€â”€ REPORTS (ADMIN) â”€â”€ */
 async function renderReports() {
   const { data: contracts } = await sb.from('arc_contracts').select('id, arc_customers(company_name)');
 
   let html = `
-    <div class="panel-title">📊 Reports</div>
+    <div class="panel-title">ðŸ“Š Reports</div>
     <div class="form-card">
       <div class="form-row">
         <div class="form-group">
@@ -3627,7 +3760,7 @@ async function generateReport() {
   const start = document.getElementById('reportStart').value;
   const end = document.getElementById('reportEnd').value;
 
-  loading(true, 'Generating report…');
+  loading(true, 'Generating reportâ€¦');
 
   let query = sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(total_hours, arc_customers(company_name))');
 
@@ -3661,7 +3794,7 @@ async function generateReport() {
       const totalCustHours = custLogs.reduce((sum, log) => sum + log.hours, 0);
       html += `<tr style="background:#f8f8f8;font-weight:700"><td>${custName}</td><td colspan="3"></td><td>${formatCurrency(totalCustHours)}</td></tr>`;
       custLogs.forEach(log => {
-        html += `<tr><td></td><td>${formatDate(log.work_date)}</td><td>${log.arc_projects?.project_name || '—'}</td><td>${log.task_name || '—'}</td><td>${formatCurrency(log.hours)}</td></tr>`;
+        html += `<tr><td></td><td>${formatDate(log.work_date)}</td><td>${log.arc_projects?.project_name || 'â€”'}</td><td>${log.task_name || 'â€”'}</td><td>${formatCurrency(log.hours)}</td></tr>`;
       });
     }
 
@@ -3745,11 +3878,11 @@ function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
 }
 
-/* ══════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    INIT
-══════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 window.addEventListener('load', async () => {
-  loading(true, 'Initializing…');
+  loading(true, 'Initializingâ€¦');
 
   try {
     const recoveryMode = isPasswordRecoveryMode();
@@ -3775,3 +3908,4 @@ window.addEventListener('load', async () => {
 </script>
 </body>
 </html>
+
