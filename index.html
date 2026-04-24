@@ -807,12 +807,21 @@ body {
   min-width: 176px;
 }
 
+.viewer-sort-select-project {
+  width: min(100%, 120px);
+  min-width: 120px;
+}
+
 .viewer-filter-controls {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 10px;
   flex: 1 1 900px;
   align-items: end;
+}
+
+.viewer-filter-controls-project {
+  grid-template-columns: minmax(240px, 1.8fr) repeat(7, minmax(120px, 1fr));
 }
 
 .viewer-filter-controls .filter-chip {
@@ -825,11 +834,6 @@ body {
 
 .viewer-toolbar-search {
   min-width: 240px;
-}
-
-.viewer-toolbar-search-compact {
-  min-width: 120px;
-  max-width: 120px;
 }
 
 .viewer-hours-compact {
@@ -3008,7 +3012,7 @@ async function renderProjects() {
     <div class="viewer-control-stack">
       <div class="viewer-control-row">
         <div class="viewer-row-label">Sort Projects</div>
-        <select id="projectSortControl" class="form-select viewer-sort-select" onchange="setProjectSort(this.value)">
+        <select id="projectSortControl" class="form-select viewer-sort-select viewer-sort-select-project" onchange="setProjectSort(this.value)">
           <option value="newest" ${projectSort === 'newest' ? 'selected' : ''}>Newest First</option>
           <option value="oldest" ${projectSort === 'oldest' ? 'selected' : ''}>Oldest First</option>
           <option value="name" ${projectSort === 'name' ? 'selected' : ''}>Project Name A-Z</option>
@@ -3017,8 +3021,8 @@ async function renderProjects() {
       </div>
       <div class="viewer-control-row">
         <div class="viewer-row-label">Filters</div>
-        <div class="viewer-filter-controls">
-          <div class="filter-chip viewer-toolbar-search viewer-toolbar-search-compact">
+        <div class="viewer-filter-controls viewer-filter-controls-project">
+          <div class="filter-chip viewer-toolbar-search">
             <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project/customer/contract" value="${filters.search || ''}" oninput="applyProjectFilters()">
           </div>
           <div class="filter-chip">
