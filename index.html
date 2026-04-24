@@ -787,6 +787,14 @@ body {
   margin-bottom: 16px;
 }
 
+.project-viewer-controls {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
 .viewer-control-row {
   display: flex;
   align-items: center;
@@ -804,13 +812,13 @@ body {
 }
 
 .viewer-sort-select {
-  width: min(100%, 228px);
-  min-width: 176px;
+  width: 240px;
+  max-width: 100%;
 }
 
 .viewer-sort-select-project {
-  width: min(100%, 87px);
-  min-width: 87px;
+  width: 240px;
+  max-width: 100%;
 }
 
 .viewer-filter-controls {
@@ -847,6 +855,14 @@ body {
 .viewer-filter-controls-project .viewer-toolbar-search {
   min-width: 0;
   grid-column: span 2;
+}
+
+.viewer-filter-controls-project input,
+.viewer-filter-controls-project select {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  box-sizing: border-box;
 }
 
 .viewer-control-row-project {
@@ -887,10 +903,13 @@ body {
 }
 
 .toolbar-reset-btn {
-  width: auto;
+  width: 100%;
+  height: 34px;
   min-width: 0;
   padding: 9px 14px;
-  margin-left: auto;
+  border-radius: 6px;
+  text-align: center;
+  justify-content: center;
 }
 
 .viewer-control-row-project .toolbar-reset-btn,
@@ -914,6 +933,16 @@ body {
   }
 }
 
+@media (max-width: 900px) {
+  .viewer-filter-controls-project .viewer-toolbar-search {
+    grid-column: span 1;
+  }
+
+  .viewer-sort-select {
+    width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
   .filter-bar,
   .viewer-filter-controls-project {
@@ -926,6 +955,16 @@ body {
 
   .toolbar-reset-btn {
     width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .viewer-filter-controls-project {
+    grid-template-columns: 1fr;
+  }
+
+  .viewer-control-row {
+    align-items: stretch;
   }
 }
 
@@ -3074,7 +3113,7 @@ async function renderProjects() {
       <div class="panel-title">Projects</div>
       <button class="btn btn-primary page-action-btn" onclick="openProjectModal()">+ New Project</button>
     </div>
-    <div class="viewer-control-stack">
+    <div class="viewer-control-stack project-viewer-controls">
       <div class="viewer-control-row">
         <div class="viewer-row-label">Sort Projects</div>
         <select id="projectSortControl" class="form-select viewer-sort-select viewer-sort-select-project" onchange="setProjectSort(this.value)">
@@ -3084,41 +3123,39 @@ async function renderProjects() {
           <option value="updated" ${projectSort === 'updated' ? 'selected' : ''}>Recently Updated</option>
         </select>
       </div>
-      <div class="viewer-control-row viewer-control-row-project">
-        <div class="viewer-row-label">Filters</div>
-        <div class="viewer-filter-controls viewer-filter-controls-project">
-          <div class="filter-chip viewer-toolbar-search">
-            <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project/customer/contract" value="${filters.search || ''}" oninput="applyProjectFilters()">
-          </div>
-          <div class="filter-chip">
-            <select id="projectFilterCustomer" class="form-select" onchange="applyProjectFilters()">${customerOptions}</select>
-          </div>
-          <div class="filter-chip">
-            <select id="projectFilterContract" class="form-select" onchange="applyProjectFilters()">${contractOptions}</select>
-          </div>
-          <div class="filter-chip">
-            <select id="projectFilterStatus" class="form-select" onchange="applyProjectFilters()">
-              <option value="">Status: All</option>
-              <option value="active" ${filters.status === 'active' ? 'selected' : ''}>Active</option>
-              <option value="paused" ${filters.status === 'paused' ? 'selected' : ''}>Paused</option>
-              <option value="completed" ${filters.status === 'completed' ? 'selected' : ''}>Completed</option>
-            </select>
-          </div>
-          <div class="filter-chip">
-            <input type="date" id="projectFilterStartFrom" class="form-input" value="${filters.startFrom || ''}" onchange="applyProjectFilters()">
-          </div>
-          <div class="filter-chip">
-            <input type="date" id="projectFilterEndTo" class="form-input" value="${filters.endTo || ''}" onchange="applyProjectFilters()">
-          </div>
-          <div class="filter-chip">
-            <input type="number" id="projectFilterEstimatedMin" class="form-input" min="0" step="0.5" placeholder="Estimated Hours" value="${filters.estimatedMin || ''}" oninput="applyProjectFilters()">
-          </div>
-          <div class="filter-chip">
-            <input type="number" id="projectFilterActualMin" class="form-input" min="0" step="0.5" placeholder="Actual Hours" value="${filters.actualMin || ''}" oninput="applyProjectFilters()">
-          </div>
+      <div class="viewer-row-label">Filters</div>
+      <div class="viewer-filter-controls-project">
+        <div class="filter-chip viewer-toolbar-search">
+          <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project/customer/contract" value="${filters.search || ''}" oninput="applyProjectFilters()">
         </div>
-        <button class="btn btn-secondary toolbar-reset-btn" onclick="resetProjectFilters()">Reset Filters</button>
+        <div class="filter-chip">
+          <select id="projectFilterCustomer" class="form-select" onchange="applyProjectFilters()">${customerOptions}</select>
+        </div>
+        <div class="filter-chip">
+          <select id="projectFilterContract" class="form-select" onchange="applyProjectFilters()">${contractOptions}</select>
+        </div>
+        <div class="filter-chip">
+          <select id="projectFilterStatus" class="form-select" onchange="applyProjectFilters()">
+            <option value="">Status: All</option>
+            <option value="active" ${filters.status === 'active' ? 'selected' : ''}>Active</option>
+            <option value="paused" ${filters.status === 'paused' ? 'selected' : ''}>Paused</option>
+            <option value="completed" ${filters.status === 'completed' ? 'selected' : ''}>Completed</option>
+          </select>
+        </div>
+        <div class="filter-chip">
+          <input type="date" id="projectFilterStartFrom" class="form-input" value="${filters.startFrom || ''}" onchange="applyProjectFilters()">
+        </div>
+        <div class="filter-chip">
+          <input type="date" id="projectFilterEndTo" class="form-input" value="${filters.endTo || ''}" onchange="applyProjectFilters()">
+        </div>
+        <div class="filter-chip">
+          <input type="number" id="projectFilterEstimatedMin" class="form-input" min="0" step="0.5" placeholder="Estimated Hours" value="${filters.estimatedMin || ''}" oninput="applyProjectFilters()">
+        </div>
+        <div class="filter-chip">
+          <input type="number" id="projectFilterActualMin" class="form-input" min="0" step="0.5" placeholder="Actual Hours" value="${filters.actualMin || ''}" oninput="applyProjectFilters()">
+        </div>
       </div>
+      <button class="btn btn-secondary toolbar-reset-btn" onclick="resetProjectFilters()">Reset Filters</button>
     </div>
     <div class="table-wrapper">
       <table class="data-table">
