@@ -719,10 +719,11 @@ body {
 
 .filter-bar {
   display: grid;
-  grid-template-columns: minmax(240px, 1.6fr) repeat(6, minmax(150px, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
   align-items: end;
+  width: 100%;
 }
 
 .filter-chip {
@@ -820,45 +821,40 @@ body {
   align-items: end;
 }
 
-.viewer-filter-controls-project {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  flex: 1 1 auto;
-}
-
-.viewer-filter-controls-project .viewer-toolbar-search {
-  min-width: 260px;
-  flex: 1.8 1 260px;
-}
-
+.filter-bar .filter-chip,
 .viewer-filter-controls-project .filter-chip {
-  min-width: 150px;
-  flex: 1 1 150px;
-}
-
-.viewer-control-row-project {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  flex-wrap: wrap;
+  min-width: 0;
   width: 100%;
 }
 
-.viewer-control-row-project .toolbar-reset-btn {
-  flex: 0 0 auto;
-  margin-left: 0;
-  align-self: flex-start;
+.filter-chip .form-input,
+.filter-chip .form-select,
+.filter-chip input,
+.filter-chip select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
-@media (max-width: 1500px) {
-  .viewer-control-row-project {
-    align-items: stretch;
-  }
+.viewer-filter-controls-project {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  width: 100%;
+  align-items: end;
+}
 
-  .viewer-filter-controls-project .viewer-toolbar-search {
-    flex-basis: 240px;
-  }
+.viewer-filter-controls-project .viewer-toolbar-search {
+  min-width: 0;
+  grid-column: span 2;
+}
+
+.viewer-control-row-project {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  width: 100%;
+  align-items: end;
 }
 
 .viewer-filter-controls .filter-chip {
@@ -895,6 +891,42 @@ body {
   min-width: 0;
   padding: 9px 14px;
   margin-left: auto;
+}
+
+.viewer-control-row-project .toolbar-reset-btn,
+.toolbar-reset-btn {
+  white-space: nowrap;
+  align-self: end;
+  margin-left: 0;
+}
+
+@media (max-width: 1200px) {
+  .viewer-control-row-project {
+    grid-template-columns: 1fr;
+  }
+
+  .viewer-control-row-project .toolbar-reset-btn {
+    justify-self: start;
+  }
+
+  .viewer-filter-controls-project .viewer-toolbar-search {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .filter-bar,
+  .viewer-filter-controls-project {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-chip-label {
+    font-size: 10px;
+  }
+
+  .toolbar-reset-btn {
+    width: 100%;
+  }
 }
 
 /* ── TABLE ── */
