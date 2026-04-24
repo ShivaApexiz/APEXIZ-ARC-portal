@@ -821,7 +821,7 @@ body {
 }
 
 .viewer-filter-controls-project {
-  grid-template-columns: minmax(240px, 1.8fr) repeat(7, minmax(120px, 1fr));
+  grid-template-columns: minmax(240px, 1.6fr) repeat(7, minmax(132px, 1fr));
 }
 
 .viewer-filter-controls .filter-chip {
@@ -836,10 +836,6 @@ body {
   min-width: 240px;
 }
 
-.viewer-hours-compact {
-  min-width: 110px;
-  max-width: 110px;
-}
 
 .page-action-btn {
   width: auto;
@@ -3045,10 +3041,10 @@ async function renderProjects() {
           <div class="filter-chip">
             <input type="date" id="projectFilterEndTo" class="form-input" value="${filters.endTo || ''}" onchange="applyProjectFilters()">
           </div>
-          <div class="filter-chip viewer-hours-compact">
+          <div class="filter-chip">
             <input type="number" id="projectFilterEstimatedMin" class="form-input" min="0" step="0.5" placeholder="Estimated Hours" value="${filters.estimatedMin || ''}" oninput="applyProjectFilters()">
           </div>
-          <div class="filter-chip viewer-hours-compact">
+          <div class="filter-chip">
             <input type="number" id="projectFilterActualMin" class="form-input" min="0" step="0.5" placeholder="Actual Hours" value="${filters.actualMin || ''}" oninput="applyProjectFilters()">
           </div>
         </div>
