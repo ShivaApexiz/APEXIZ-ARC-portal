@@ -719,9 +719,29 @@ body {
 
 .filter-bar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: minmax(240px, 1.6fr) repeat(6, minmax(150px, 1fr)) auto;
   gap: 12px;
   margin-bottom: 16px;
+  align-items: end;
+}
+
+.filter-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-chip-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--neutral-700);
+}
+
+.filter-chip .form-input,
+.filter-chip .form-select {
+  margin-bottom: 0;
 }
 
 .compact-select {
@@ -1422,12 +1442,21 @@ const STATE = {
     customerId: '',
     contractId: '',
     status: '',
-    search: ''
+    search: '',
+    startFrom: '',
+    endTo: '',
+    estimatedMin: '',
+    actualMin: ''
   },
   contractFilters: {
     customerId: '',
     activity: '',
-    search: ''
+    search: '',
+    startFrom: '',
+    endTo: '',
+    usedMin: '',
+    totalMin: '',
+    remainingMin: ''
   }
 };
 
@@ -1833,12 +1862,20 @@ async function renderDashboardV2() {
       .map(([id, name]) => `<option value="${id}" ${filters.customerId === id ? 'selected' : ''}>${name}</option>`))
     .join('');
   const filteredContracts = (contracts || []).filter(contract => {
+    const usedHours = contract.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
+    const totalHours = contract.total_hours || 0;
+    const remainingHours = Math.max(totalHours - usedHours, 0);
     const customerMatch = !filters.customerId || contract.customer_id === filters.customerId;
     const searchMatch = !filters.search || [contract.contract_name, contract.arc_customers?.company_name].some(value => (value || '').toLowerCase().includes(filters.search));
     const activityMatch = !filters.activity
       || (filters.activity === 'active' && (!contract.end_date || contract.end_date >= today))
       || (filters.activity === 'ended' && contract.end_date && contract.end_date < today);
-    return customerMatch && searchMatch && activityMatch;
+    const startMatch = !filters.startFrom || (contract.start_date && contract.start_date >= filters.startFrom);
+    const endMatch = !filters.endTo || (contract.end_date && contract.end_date <= filters.endTo);
+    const usedMatch = !filters.usedMin || usedHours >= parseFloat(filters.usedMin || 0);
+    const totalMatch = !filters.totalMin || totalHours >= parseFloat(filters.totalMin || 0);
+    const remainingMatch = !filters.remainingMin || remainingHours >= parseFloat(filters.remainingMin || 0);
+    return customerMatch && searchMatch && activityMatch && startMatch && endMatch && usedMatch && totalMatch && remainingMatch;
   });
 
   if (isCustomer) contractQuery = contractQuery.eq('customer_id', customerId);
@@ -2300,12 +2337,20 @@ async function renderContracts() {
       .map(([id, name]) => `<option value="${id}" ${filters.customerId === id ? 'selected' : ''}>${name}</option>`))
     .join('');
   const filteredContracts = (contracts || []).filter(contract => {
+    const usedHours = contract.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
+    const totalHours = contract.total_hours || 0;
+    const remainingHours = Math.max(totalHours - usedHours, 0);
     const customerMatch = !filters.customerId || contract.customer_id === filters.customerId;
     const searchMatch = !filters.search || [contract.contract_name, contract.arc_customers?.company_name].some(value => (value || '').toLowerCase().includes(filters.search));
     const activityMatch = !filters.activity
       || (filters.activity === 'active' && (!contract.end_date || contract.end_date >= today))
       || (filters.activity === 'ended' && contract.end_date && contract.end_date < today);
-    return customerMatch && searchMatch && activityMatch;
+    const startMatch = !filters.startFrom || (contract.start_date && contract.start_date >= filters.startFrom);
+    const endMatch = !filters.endTo || (contract.end_date && contract.end_date <= filters.endTo);
+    const usedMatch = !filters.usedMin || usedHours >= parseFloat(filters.usedMin || 0);
+    const totalMatch = !filters.totalMin || totalHours >= parseFloat(filters.totalMin || 0);
+    const remainingMatch = !filters.remainingMin || remainingHours >= parseFloat(filters.remainingMin || 0);
+    return customerMatch && searchMatch && activityMatch && startMatch && endMatch && usedMatch && totalMatch && remainingMatch;
   });
 
   let html = `
@@ -2315,21 +2360,41 @@ async function renderContracts() {
     </div>
     <div class="form-card">
       <div class="filter-bar">
-        <div class="form-group">
-          <label class="form-label">Customer</label>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Filters</div>
+          <input type="text" id="contractFilterSearch" class="form-input" placeholder="Search contract/customer" value="${filters.search || ''}">
+        </div>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Customer</div>
           <select id="contractFilterCustomer" class="form-select">${customerOptions}</select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Activity</label>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Activity</div>
           <select id="contractFilterActivity" class="form-select">
             <option value="">All</option>
             <option value="active" ${filters.activity === 'active' ? 'selected' : ''}>Active</option>
             <option value="ended" ${filters.activity === 'ended' ? 'selected' : ''}>Ended</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Search</label>
-          <input type="text" id="contractFilterSearch" class="form-input" placeholder="Search contract or customer" value="${filters.search || ''}">
+        <div class="filter-chip">
+          <div class="filter-chip-label">Start From</div>
+          <input type="date" id="contractFilterStartFrom" class="form-input" value="${filters.startFrom || ''}">
+        </div>
+        <div class="filter-chip">
+          <div class="filter-chip-label">End To</div>
+          <input type="date" id="contractFilterEndTo" class="form-input" value="${filters.endTo || ''}">
+        </div>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Used Hours</div>
+          <input type="number" id="contractFilterUsedMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.usedMin || ''}">
+        </div>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Total Hours</div>
+          <input type="number" id="contractFilterTotalMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.totalMin || ''}">
+        </div>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Remaining</div>
+          <input type="number" id="contractFilterRemainingMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.remainingMin || ''}">
         </div>
       </div>
       <div class="btn-group" style="justify-content:flex-end">
@@ -2340,7 +2405,7 @@ async function renderContracts() {
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Contract</th><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Hours</th><th>Used Hours</th><th>Projects</th><th>Actions</th></tr>
+          <tr><th>Contract</th><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Hours</th><th>Used Hours</th><th>Remaining Hours</th><th>Projects</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -2354,6 +2419,7 @@ async function renderContracts() {
         <td>${formatDate(c.end_date)}</td>
         <td>${formatCurrency(c.total_hours)}</td>
         <td>${formatCurrency(c.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0)}</td>
+        <td>${formatCurrency(Math.max((c.total_hours || 0) - (c.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0), 0))}</td>
         <td>${c.arc_projects?.length || 0}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="openProjectsModal('${c.id}')">Projects</button>
@@ -2362,7 +2428,7 @@ async function renderContracts() {
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="8" style="text-align:center;padding:40px">No contracts found.</td></tr>';
+    html += '<tr><td colspan="9" style="text-align:center;padding:40px">No contracts found.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -2603,13 +2669,17 @@ function applyProjectFilters() {
     customerId: document.getElementById('projectFilterCustomer')?.value || '',
     contractId: document.getElementById('projectFilterContract')?.value || '',
     status: document.getElementById('projectFilterStatus')?.value || '',
-    search: (document.getElementById('projectFilterSearch')?.value || '').trim().toLowerCase()
+    search: (document.getElementById('projectFilterSearch')?.value || '').trim().toLowerCase(),
+    startFrom: document.getElementById('projectFilterStartFrom')?.value || '',
+    endTo: document.getElementById('projectFilterEndTo')?.value || '',
+    estimatedMin: document.getElementById('projectFilterEstimatedMin')?.value || '',
+    actualMin: document.getElementById('projectFilterActualMin')?.value || ''
   };
   renderProjects();
 }
 
 function resetProjectFilters() {
-  STATE.projectFilters = { customerId: '', contractId: '', status: '', search: '' };
+  STATE.projectFilters = { customerId: '', contractId: '', status: '', search: '', startFrom: '', endTo: '', estimatedMin: '', actualMin: '' };
   renderProjects();
 }
 
@@ -2617,13 +2687,18 @@ function applyContractFilters() {
   STATE.contractFilters = {
     customerId: document.getElementById('contractFilterCustomer')?.value || '',
     activity: document.getElementById('contractFilterActivity')?.value || '',
-    search: (document.getElementById('contractFilterSearch')?.value || '').trim().toLowerCase()
+    search: (document.getElementById('contractFilterSearch')?.value || '').trim().toLowerCase(),
+    startFrom: document.getElementById('contractFilterStartFrom')?.value || '',
+    endTo: document.getElementById('contractFilterEndTo')?.value || '',
+    usedMin: document.getElementById('contractFilterUsedMin')?.value || '',
+    totalMin: document.getElementById('contractFilterTotalMin')?.value || '',
+    remainingMin: document.getElementById('contractFilterRemainingMin')?.value || ''
   };
   renderContracts();
 }
 
 function resetContractFilters() {
-  STATE.contractFilters = { customerId: '', activity: '', search: '' };
+  STATE.contractFilters = { customerId: '', activity: '', search: '', startFrom: '', endTo: '', usedMin: '', totalMin: '', remainingMin: '' };
   renderContracts();
 }
 
@@ -2732,12 +2807,17 @@ async function renderProjects() {
 
   const filteredProjects = projects.filter(project => {
     const contract = contractMap[project.contract_id];
+    const actualHours = loggedHoursByProject[project.id] || 0;
     const customerMatch = !filters.customerId || contract?.customer_id === filters.customerId;
     const contractMatch = !filters.contractId || project.contract_id === filters.contractId;
     const statusMatch = !filters.status || (project.status || 'active') === filters.status;
     const searchMatch = !filters.search || [project.project_name, project.project_description, contract?.contract_name, contract?.arc_customers?.company_name]
       .some(value => (value || '').toLowerCase().includes(filters.search));
-    return customerMatch && contractMatch && statusMatch && searchMatch;
+    const startMatch = !filters.startFrom || (project.start_date && project.start_date >= filters.startFrom);
+    const endMatch = !filters.endTo || (project.estimated_end_date && project.estimated_end_date <= filters.endTo);
+    const estimatedMatch = !filters.estimatedMin || (project.estimated_hours || 0) >= parseFloat(filters.estimatedMin || 0);
+    const actualMatch = !filters.actualMin || actualHours >= parseFloat(filters.actualMin || 0);
+    return customerMatch && contractMatch && statusMatch && searchMatch && startMatch && endMatch && estimatedMatch && actualMatch;
   });
 
   const rows = filteredProjects.length
@@ -2779,16 +2859,20 @@ async function renderProjects() {
     </div>
     <div class="form-card">
       <div class="filter-bar">
-        <div class="form-group">
-          <label class="form-label">Customer</label>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Filters</div>
+          <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project/customer/contract" value="${filters.search || ''}">
+        </div>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Customer</div>
           <select id="projectFilterCustomer" class="form-select">${customerOptions}</select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Contract</label>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Contract</div>
           <select id="projectFilterContract" class="form-select">${contractOptions}</select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Status</div>
           <select id="projectFilterStatus" class="form-select">
             <option value="">All</option>
             <option value="active" ${filters.status === 'active' ? 'selected' : ''}>Active</option>
@@ -2796,9 +2880,21 @@ async function renderProjects() {
             <option value="completed" ${filters.status === 'completed' ? 'selected' : ''}>Completed</option>
           </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Search</label>
-          <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project, contract, or customer" value="${filters.search || ''}">
+        <div class="filter-chip">
+          <div class="filter-chip-label">Start From</div>
+          <input type="date" id="projectFilterStartFrom" class="form-input" value="${filters.startFrom || ''}">
+        </div>
+        <div class="filter-chip">
+          <div class="filter-chip-label">End To</div>
+          <input type="date" id="projectFilterEndTo" class="form-input" value="${filters.endTo || ''}">
+        </div>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Estimated Hours</div>
+          <input type="number" id="projectFilterEstimatedMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.estimatedMin || ''}">
+        </div>
+        <div class="filter-chip">
+          <div class="filter-chip-label">Actual Hours</div>
+          <input type="number" id="projectFilterActualMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.actualMin || ''}">
         </div>
       </div>
       <div class="btn-group" style="justify-content:flex-end">
