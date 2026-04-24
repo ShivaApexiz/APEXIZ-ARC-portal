@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>APEXIZ â€” Annual Resource Contract Hours Tracker</title>
+<title>APEXIZ - Annual Resource Contract Hours Tracker</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -92,7 +92,7 @@ body {
 }
 
 .topbar-brand::before {
-  content: 'â±';
+  content: 'Updated';
   font-size: 18px;
 }
 
@@ -1568,7 +1568,7 @@ body {
             <path d="M 60 60 Q 75 75 85 85" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
           </svg>
         </div>
-        <div class="auth-logo-text">â± APEXIZ</div>
+        <div class="auth-logo-text">APEXIZ</div>
         <div class="auth-title" id="authTitle">Sign In</div>
         <div class="auth-sub">Annual Resource Contract Hours Tracker</div>
       </div>
@@ -1581,7 +1581,7 @@ body {
           <label class="form-label">Password</label>
           <input type="password" id="loginPassword" class="form-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required>
         </div>
-        <button type="submit" class="btn-primary">Sign In â†’</button>
+        <button type="submit" class="btn-primary">Sign In</button>
         <button type="button" class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="requestPasswordReset()">Forgot Password</button>
         <div id="loginMsg" class="auth-msg"></div>
       </form>
@@ -1594,12 +1594,12 @@ body {
           <label class="form-label">Confirm Password</label>
           <input type="password" id="setupPasswordConfirm" class="form-input" placeholder="Re-enter password" required minlength="6">
         </div>
-        <button type="submit" class="btn-primary">Set Password â†’</button>
+        <button type="submit" class="btn-primary">Set Password</button>
         <div id="setupMsg" class="auth-msg"></div>
       </form>
     </div>
   </div>
-  <div class="footer">Â© 2026 APEXIZ â€¢ CONFIDENTIAL INFORMATION â€¢ ALL RIGHTS RESERVED</div>
+  <div class="footer">© 2026 APEXIZ • CONFIDENTIAL INFORMATION • ALL RIGHTS RESERVED</div>
 </div>
 
 <!-- â•â• DASHBOARD PAGE â•â• -->
@@ -1636,25 +1636,25 @@ body {
   <div class="page-body dashboard-body">
     <div class="sidebar">
       <div class="nav-section">Navigation</div>
-      <button class="nav-item active" id="navDash" onclick="showPanel('dashboard')">ðŸ“Š Dashboard</button>
+      <button class="nav-item active" id="navDash" onclick="showPanel('dashboard')">Dashboard</button>
       
       <div id="adminNav" style="display: none;">
         <div class="nav-section">Admin</div>
-        <button class="nav-item" id="navCustomers" onclick="showPanel('customers')">ðŸ¢ Customers</button>
-        <button class="nav-item" id="navContracts" onclick="showPanel('contracts')">ðŸ“‹ Contracts</button>
-        <button class="nav-item" id="navLogtime" onclick="showPanel('logtime')">âž• Log Time</button>
-        <button class="nav-item" id="navTimeLogs" onclick="showPanel('timelogs')">â± Time Logs</button>
-        <button class="nav-item" id="navReports" onclick="showPanel('reports')">ðŸ“Š Reports</button>
+        <button class="nav-item" id="navCustomers" onclick="showPanel('customers')">Customers</button>
+        <button class="nav-item" id="navContracts" onclick="showPanel('contracts')">Contracts</button>
+        <button class="nav-item" id="navLogtime" onclick="showPanel('logtime')">Log Time</button>
+        <button class="nav-item" id="navTimeLogs" onclick="showPanel('timelogs')">Time Logs</button>
+        <button class="nav-item" id="navReports" onclick="showPanel('reports')">Reports</button>
       </div>
 
       <div id="customerNav" style="display: none;">
         <div class="nav-section">Account</div>
-        <button class="nav-item" id="navMyContract" onclick="showPanel('mycontract')">ðŸ“‹ My Contract</button>
-        <button class="nav-item" id="navMyHours" onclick="showPanel('myhours')">â± Hours Usage</button>
+        <button class="nav-item" id="navMyContract" onclick="showPanel('mycontract')">My Contract</button>
+        <button class="nav-item" id="navMyHours" onclick="showPanel('myhours')">Hours Usage</button>
       </div>
 
       <div class="nav-divider"></div>
-      <button class="logout-btn" onclick="doLogout()">â†© Sign Out</button>
+      <button class="logout-btn" onclick="doLogout()">Sign Out</button>
     </div>
 
     <div class="main-content" id="mainContent">
@@ -1662,7 +1662,7 @@ body {
     </div>
   </div>
 
-  <div class="footer">Â© 2026 APEXIZ â€¢ CONFIDENTIAL â€¢ ALL RIGHTS RESERVED</div>
+  <div class="footer">© 2026 APEXIZ • CONFIDENTIAL • ALL RIGHTS RESERVED</div>
 </div>
 
 <!-- â•â• MODALS â•â• -->
@@ -1675,7 +1675,7 @@ body {
 <!-- â•â• LOADING â•â• -->
 <div id="loadingOverlay">
   <div class="spinner"></div>
-  <div class="loading-text" id="loadingText">Loadingâ€¦</div>
+  <div class="loading-text" id="loadingText">Loading...</div>
 </div>
 
 <script>
@@ -1814,7 +1814,7 @@ function showPage(id) {
   document.getElementById(id).classList.add('active');
 }
 
-function loading(show, text = 'Loadingâ€¦') {
+function loading(show, text = 'Loading...') {
   const el = document.getElementById('loadingOverlay');
   document.getElementById('loadingText').innerText = text;
   el.classList.toggle('show', show);
@@ -1916,7 +1916,7 @@ async function doLogin(e) {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPassword').value;
   
-  loading(true, 'Signing inâ€¦');
+  loading(true, 'Signing in...');
   
   try {
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
@@ -2093,7 +2093,7 @@ async function showPanel(name) {
   if (navEl) navEl.classList.add('active');
 
   const main = document.getElementById('mainContent');
-  main.innerHTML = '<div class="empty-state"><div class="empty-state-icon">â³</div></div>';
+  main.innerHTML = '<div class="empty-state"><div class="empty-state-icon">...</div></div>';
 
   if (name === 'dashboard') await renderDashboardV2();
   else if (name === 'customers') await renderCustomers();
@@ -2106,7 +2106,7 @@ async function showPanel(name) {
   else if (name === 'myhours') await renderMyHours();
 }
 
-/* â”€â”€ DASHBOARD â”€â”€ */
+/* Dashboard */
 async function renderDashboardV2() {
   const main = document.getElementById('mainContent');
   const isCustomer = STATE.profile.role === 'customer';
@@ -2117,35 +2117,16 @@ async function renderDashboardV2() {
     .select('*, arc_customers(company_name), arc_projects(id, project_name)')
     .order('start_date', { ascending: false });
 
-  if (error) {
-    document.getElementById('mainContent').innerHTML = `<div class="alert error show">Unable to load contracts: ${error.message}</div>`;
-    return;
-  }
-
-  const filters = STATE.contractFilters || {};
-  const today = new Date().toISOString().split('T')[0];
-  const customerOptions = ['<option value="">All Customers</option>']
-    .concat([...(new Map((contracts || []).map(contract => [contract.customer_id, contract.arc_customers?.company_name || 'Unknown'])))]
-      .map(([id, name]) => `<option value="${id}" ${filters.customerId === id ? 'selected' : ''}>${name}</option>`))
-    .join('');
-  const filteredContracts = (contracts || []).filter(contract => {
-    const usedHours = contract.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
-    const totalHours = contract.total_hours || 0;
-    const remainingHours = Math.max(totalHours - usedHours, 0);
-    const customerMatch = !filters.customerId || contract.customer_id === filters.customerId;
-    const searchMatch = !filters.search || [contract.contract_name, contract.arc_customers?.company_name].some(value => (value || '').toLowerCase().includes(filters.search));
-    const activityMatch = !filters.activity
-      || (filters.activity === 'active' && (!contract.end_date || contract.end_date >= today))
-      || (filters.activity === 'ended' && contract.end_date && contract.end_date < today);
-    const startMatch = !filters.startFrom || (contract.start_date && contract.start_date >= filters.startFrom);
-    const endMatch = !filters.endTo || (contract.end_date && contract.end_date <= filters.endTo);
-    const usedMatch = !filters.usedMin || usedHours >= parseFloat(filters.usedMin || 0);
-    const totalMatch = !filters.totalMin || totalHours >= parseFloat(filters.totalMin || 0);
-    const remainingMatch = !filters.remainingMin || remainingHours >= parseFloat(filters.remainingMin || 0);
-    return customerMatch && searchMatch && activityMatch && startMatch && endMatch && usedMatch && totalMatch && remainingMatch;
-  });
-
   if (isCustomer) contractQuery = contractQuery.eq('customer_id', customerId);
+
+  let projectQuery = sb.from('arc_projects').select('*').order('created_at', { ascending: false });
+  if (isCustomer) {
+    projectQuery = sb
+      .from('arc_projects')
+      .select('*, arc_contracts!inner(customer_id)')
+      .eq('arc_contracts.customer_id', customerId)
+      .order('created_at', { ascending: false });
+  }
 
   let logsQuery = sb
     .from('arc_time_logs')
@@ -2157,9 +2138,7 @@ async function renderDashboardV2() {
   const [contractsRes, customersRes, projectsRes, logsRes] = await Promise.all([
     contractQuery,
     isCustomer ? Promise.resolve({ data: [] }) : sb.from('arc_customers').select('id'),
-    isCustomer
-      ? sb.from('arc_projects').select('*, arc_contracts(customer_id)').eq('arc_contracts.customer_id', customerId)
-      : sb.from('arc_projects').select('*'),
+    projectQuery,
     logsQuery
   ]);
 
@@ -2169,55 +2148,52 @@ async function renderDashboardV2() {
     return;
   }
 
-  const contracts = contractsRes.data;
-  const customers = customersRes.data;
-  const projects = projectsRes.data;
-  const logs = logsRes.data;
-  const safeContracts = contracts || [];
-  const allLogs = logs || [];
-  const profileNames = await getArcProfileNameMap(allLogs.map(log => log.logged_by));
-  const safeLogs = allLogs.slice(0, 5);
-  const totalContracted = safeContracts.reduce((sum, c) => sum + (c.total_hours || 0), 0);
-  const usedHours = allLogs.reduce((sum, log) => sum + (log.hours || 0), 0);
+  const contracts = contractsRes.data || [];
+  const customers = customersRes.data || [];
+  const projects = projectsRes.data || [];
+  const logs = logsRes.data || [];
+  const profileNames = await getArcProfileNameMap(logs.map(log => log.logged_by));
+  const safeLogs = logs.slice(0, 5);
+  const usedHours = logs.reduce((sum, log) => sum + (log.hours || 0), 0);
 
-  const usedByContract = allLogs.reduce((acc, log) => {
+  const usedByContract = logs.reduce((acc, log) => {
     const contractId = log.contract_id || log.arc_contracts?.id;
     if (contractId) acc[contractId] = (acc[contractId] || 0) + (log.hours || 0);
     return acc;
   }, {});
 
-  const contractUsedHours = safeContracts
-    .map(c => ({
-      name: c.contract_name || c.arc_customers?.company_name || 'Contract',
-      hours: usedByContract[c.id] || 0
+  const contractUsedHours = contracts
+    .map(contract => ({
+      name: contract.contract_name || contract.arc_customers?.company_name || 'Contract',
+      hours: usedByContract[contract.id] || 0
     }))
-    .filter(c => c.hours > 0)
+    .filter(item => item.hours > 0)
     .sort((a, b) => b.hours - a.hours)
     .slice(0, 5);
 
-  const projectHoursMap = {};
-  allLogs.forEach(log => {
+  const projectHoursMap = logs.reduce((acc, log) => {
     const projectName = log.arc_projects?.project_name || 'Unassigned';
-    projectHoursMap[projectName] = (projectHoursMap[projectName] || 0) + (log.hours || 0);
-  });
+    acc[projectName] = (acc[projectName] || 0) + (log.hours || 0);
+    return acc;
+  }, {});
 
   const topProjects = Object.entries(projectHoursMap)
     .map(([name, hours]) => ({ name, hours }))
     .sort((a, b) => b.hours - a.hours)
     .slice(0, 5);
 
-  const maxProjectHours = Math.max(...topProjects.map(p => p.hours), 1);
+  const maxProjectHours = Math.max(...topProjects.map(project => project.hours), 1);
 
   const metricCards = isCustomer
     ? [
-        ['My Contracts', safeContracts.length, 'Active Contracts'],
-        ['Projects', projects?.length || 0, 'Total Projects'],
+        ['My Contracts', contracts.length, 'Active Contracts'],
+        ['Projects', projects.length, 'Total Projects'],
         ['Logged Hours', `${formatCurrency(usedHours)}h`, 'Total Used Hours']
       ]
     : [
-        ['Customers', customers?.length || 0, 'Total Registered'],
-        ['Contracts', safeContracts.length, 'Total Contracts'],
-        ['Projects', projects?.length || 0, 'Total Projects'],
+        ['Customers', customers.length, 'Total Registered'],
+        ['Contracts', contracts.length, 'Total Contracts'],
+        ['Projects', projects.length, 'Total Projects'],
         ['Logged Hours', `${formatCurrency(usedHours)}h`, 'Total Used Hours']
       ];
 
@@ -2225,28 +2201,28 @@ async function renderDashboardV2() {
     ? safeLogs.map(log => `
       <tr>
         <td>${formatDate(log.work_date)}</td>
-        ${isCustomer ? '' : `<td>${log.arc_contracts?.arc_customers?.company_name || 'â€”'}</td>`}
-        <td>${log.arc_projects?.project_name || 'â€”'}</td>
+        ${isCustomer ? '' : `<td>${log.arc_contracts?.arc_customers?.company_name || '-'}</td>`}
+        <td>${log.arc_projects?.project_name || '-'}</td>
         <td>${formatCurrency(log.hours)}h</td>
         <td>${profileNames[log.logged_by] || 'Admin'}</td>
       </tr>
     `).join('')
     : `<tr><td colspan="${isCustomer ? 4 : 5}" style="text-align:center;padding:28px">No time logs yet.</td></tr>`;
 
-  const contractRows = safeContracts.length
-    ? safeContracts.slice(0, 6).map(c => {
-      const used = usedByContract[c.id] || 0;
-      return `
-        <tr>
-          <td>${c.contract_name || 'â€”'}</td>
-          <td>${c.arc_customers?.company_name || 'â€”'}</td>
-          <td>${formatDate(c.start_date)}</td>
-          <td>${formatDate(c.end_date)}</td>
-          <td>${c.arc_projects?.length || 0}</td>
-          <td>${formatCurrency(used)}h</td>
-        </tr>
-      `;
-    }).join('')
+  const contractRows = contracts.length
+    ? contracts.slice(0, 6).map(contract => {
+        const used = usedByContract[contract.id] || 0;
+        return `
+          <tr>
+            <td>${contract.contract_name || '-'}</td>
+            <td>${contract.arc_customers?.company_name || '-'}</td>
+            <td>${formatDate(contract.start_date)}</td>
+            <td>${formatDate(contract.end_date)}</td>
+            <td>${contract.arc_projects?.length || 0}</td>
+            <td>${formatCurrency(used)}h</td>
+          </tr>
+        `;
+      }).join('')
     : '<tr><td colspan="6" style="text-align:center;padding:28px">No contracts yet.</td></tr>';
 
   main.innerHTML = `
@@ -2268,14 +2244,18 @@ async function renderDashboardV2() {
           <div class="chart-row">
             <div class="donut-chart"><div class="donut-center">${formatCurrency(usedHours)}h<span>Total</span></div></div>
             <div class="chart-legend">
-              ${contractUsedHours.length ? contractUsedHours.map((c, i) => `<div><span class="legend-dot" style="background:${['var(--primary)','var(--info)','var(--success)','var(--warning)','var(--neutral-500)'][i]}"></span>${c.name} ${formatCurrency(c.hours)}h</div>`).join('') : '<div>No logged hours yet.</div>'}
+              ${contractUsedHours.length
+                ? contractUsedHours.map((item, index) => `<div><span class="legend-dot" style="background:${['var(--primary)','var(--info)','var(--success)','var(--warning)','var(--neutral-500)'][index]}"></span>${item.name} ${formatCurrency(item.hours)}h</div>`).join('')
+                : '<div>No logged hours yet.</div>'}
             </div>
           </div>
         </div>
         <div class="overview-pane">
           <div class="card-label">Hours by Project (Top 5)</div>
           <div class="bar-list">
-            ${topProjects.length ? topProjects.map(p => `<div class="bar-item"><span>${p.name}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max((p.hours / maxProjectHours) * 100, 6)}%"></div></div><strong>${formatCurrency(p.hours)}h</strong></div>`).join('') : '<div class="empty-state-text">No project logs yet.</div>'}
+            ${topProjects.length
+              ? topProjects.map(project => `<div class="bar-item"><span>${project.name}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max((project.hours / maxProjectHours) * 100, 6)}%"></div></div><strong>${formatCurrency(project.hours)}h</strong></div>`).join('')
+              : '<div class="empty-state-text">No project logs yet.</div>'}
           </div>
         </div>
       </div>
@@ -2616,7 +2596,7 @@ async function saveCustomer() {
 async function deleteCustomer(id) {
   if (!confirm('Delete this customer, its login account, contracts, projects, and time logs? This cannot be undone.')) return;
 
-  loading(true, 'Deletingâ€¦');
+  loading(true, 'Deleting...');
   const { error } = await sb.rpc('delete_arc_customer', { target_customer_id: id });
   loading(false);
 
@@ -3447,11 +3427,11 @@ async function renderTimeLogs() {
   const profileNames = await getArcProfileNameMap((logs || []).map(log => log.logged_by));
   const normalizedLogs = (logs || []).map(log => ({
     ...log,
-    arc_profiles: { name: profileNames[log.logged_by] || log.arc_profiles?.name || 'Ã¢â‚¬â€' }
+    arc_profiles: { name: profileNames[log.logged_by] || log.arc_profiles?.name || '-' }
   }));
 
   let html = `
-    <div class="panel-title">â± Time Logs</div>
+    <div class="panel-title">Time Logs</div>
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
@@ -3463,13 +3443,13 @@ async function renderTimeLogs() {
   if (normalizedLogs.length > 0) {
     html += normalizedLogs.map(log => `
       <tr>
-        <td><strong>${log.arc_contracts?.arc_customers?.company_name || 'â€”'}</strong></td>
-        <td>${log.arc_projects?.project_name || 'â€”'}</td>
-        <td>${log.task_name || 'â€”'}</td>
         <td>${formatDate(log.work_date)}</td>
+        <td><strong>${log.arc_contracts?.arc_customers?.company_name || '-'}</strong></td>
+        <td>${log.arc_projects?.project_name || '-'}</td>
+        <td>${log.task_name || '-'}</td>
         <td><strong>${formatCurrency(log.hours)}</strong></td>
-        <td>${log.arc_profiles?.name || 'â€”'}</td>
-        <td>${log.description ? log.description.substring(0, 40) + '...' : 'â€”'}</td>
+        <td>${log.comments || log.description || '-'}</td>
+        <td>${log.arc_profiles?.name || '-'}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="editTimeLog('${log.id}')">Edit</button>
           <button class="btn btn-sm btn-danger" onclick="deleteTimeLog('${log.id}')">Delete</button>
@@ -3487,7 +3467,7 @@ async function renderTimeLogs() {
 async function deleteTimeLog(id) {
   if (!confirm('Delete this time log entry?')) return;
 
-  loading(true, 'Deletingâ€¦');
+  loading(true, 'Deleting...');
   await sb.from('arc_time_logs').delete().eq('id', id);
   loading(false);
   showPanel('timelogs');
