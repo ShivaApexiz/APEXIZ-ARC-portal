@@ -821,7 +821,26 @@ body {
 }
 
 .viewer-filter-controls-project {
-  grid-template-columns: minmax(240px, 1.6fr) repeat(7, minmax(132px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  flex: 1 1 980px;
+}
+
+.viewer-filter-controls-project .viewer-toolbar-search {
+  min-width: 0;
+  grid-column: span 2;
+}
+
+.viewer-filter-controls-project .filter-chip {
+  min-width: 0;
+}
+
+.viewer-control-row-project {
+  align-items: end;
+}
+
+.viewer-control-row-project .toolbar-reset-btn {
+  flex: 0 0 auto;
+  margin-left: 0;
 }
 
 .viewer-filter-controls .filter-chip {
@@ -3015,7 +3034,7 @@ async function renderProjects() {
           <option value="updated" ${projectSort === 'updated' ? 'selected' : ''}>Recently Updated</option>
         </select>
       </div>
-      <div class="viewer-control-row">
+      <div class="viewer-control-row viewer-control-row-project">
         <div class="viewer-row-label">Filters</div>
         <div class="viewer-filter-controls viewer-filter-controls-project">
           <div class="filter-chip viewer-toolbar-search">
@@ -3669,6 +3688,4 @@ window.addEventListener('load', async () => {
 </script>
 </body>
 </html>
-
-
 
