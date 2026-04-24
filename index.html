@@ -753,6 +753,32 @@ body {
   font: inherit;
 }
 
+.project-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.project-toolbar .filter-bar {
+  margin-bottom: 0;
+  flex: 1 1 760px;
+}
+
+.project-sort-control {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.project-sort-control .filter-chip {
+  min-width: 220px;
+}
+
 /* ── TABLE ── */
 .table-wrapper {
   background: var(--white);
@@ -1448,6 +1474,7 @@ const STATE = {
     estimatedMin: '',
     actualMin: ''
   },
+  projectSort: 'newest',
   contractFilters: {
     customerId: '',
     activity: '',
@@ -2683,6 +2710,11 @@ function resetProjectFilters() {
   renderProjects();
 }
 
+function setProjectSort(sortValue) {
+  STATE.projectSort = sortValue || 'newest';
+  renderProjects();
+}
+
 function applyContractFilters() {
   STATE.contractFilters = {
     customerId: document.getElementById('contractFilterCustomer')?.value || '',
@@ -2797,6 +2829,7 @@ async function renderProjects() {
   }
 
   const filters = STATE.projectFilters || {};
+  const projectSort = STATE.projectSort || 'newest';
   const customerOptions = ['<option value="">All Customers</option>']
     .concat([...(new Map(contracts.map(contract => [contract.customer_id, contract.arc_customers?.company_name || 'Unknown'])))]
       .map(([id, name]) => `<option value="${id}" ${filters.customerId === id ? 'selected' : ''}>${name}</option>`))
@@ -2820,8 +2853,21 @@ async function renderProjects() {
     return customerMatch && contractMatch && statusMatch && searchMatch && startMatch && endMatch && estimatedMatch && actualMatch;
   });
 
-  const rows = filteredProjects.length
-    ? filteredProjects.map(project => {
+  const sortedProjects = [...filteredProjects].sort((left, right) => {
+    if (projectSort === 'oldest') {
+      return new Date(left.created_at || 0).getTime() - new Date(right.created_at || 0).getTime();
+    }
+    if (projectSort === 'name') {
+      return (left.project_name || '').localeCompare(right.project_name || '', undefined, { sensitivity: 'base' });
+    }
+    if (projectSort === 'updated') {
+      return new Date(right.updated_at || right.created_at || 0).getTime() - new Date(left.updated_at || left.created_at || 0).getTime();
+    }
+    return new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime();
+  });
+
+  const rows = sortedProjects.length
+    ? sortedProjects.map(project => {
         const contract = contractMap[project.contract_id];
         const customerName = contract?.arc_customers?.company_name || 'Unknown';
         const contractName = contract?.contract_name || '?';
@@ -2854,47 +2900,60 @@ async function renderProjects() {
 
   main.innerHTML = `
     <div class="panel-header">
-      <div class="panel-title">&#128451; Projects</div>
+      <div class="panel-title">Projects</div>
       <button class="btn btn-primary" onclick="openProjectModal()">+ New Project</button>
     </div>
     <div class="form-card">
-      <div class="filter-bar">
-        <div class="filter-chip">
-          <div class="filter-chip-label">Filters</div>
-          <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project/customer/contract" value="${filters.search || ''}">
+      <div class="project-toolbar">
+        <div class="filter-bar">
+          <div class="filter-chip">
+            <div class="filter-chip-label">Filters</div>
+            <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project/customer/contract" value="${filters.search || ''}">
+          </div>
+          <div class="filter-chip">
+            <div class="filter-chip-label">Customer</div>
+            <select id="projectFilterCustomer" class="form-select">${customerOptions}</select>
+          </div>
+          <div class="filter-chip">
+            <div class="filter-chip-label">Contract</div>
+            <select id="projectFilterContract" class="form-select">${contractOptions}</select>
+          </div>
+          <div class="filter-chip">
+            <div class="filter-chip-label">Status</div>
+            <select id="projectFilterStatus" class="form-select">
+              <option value="">All</option>
+              <option value="active" ${filters.status === 'active' ? 'selected' : ''}>Active</option>
+              <option value="paused" ${filters.status === 'paused' ? 'selected' : ''}>Paused</option>
+              <option value="completed" ${filters.status === 'completed' ? 'selected' : ''}>Completed</option>
+            </select>
+          </div>
+          <div class="filter-chip">
+            <div class="filter-chip-label">Start From</div>
+            <input type="date" id="projectFilterStartFrom" class="form-input" value="${filters.startFrom || ''}">
+          </div>
+          <div class="filter-chip">
+            <div class="filter-chip-label">End To</div>
+            <input type="date" id="projectFilterEndTo" class="form-input" value="${filters.endTo || ''}">
+          </div>
+          <div class="filter-chip">
+            <div class="filter-chip-label">Estimated Hours</div>
+            <input type="number" id="projectFilterEstimatedMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.estimatedMin || ''}">
+          </div>
+          <div class="filter-chip">
+            <div class="filter-chip-label">Actual Hours</div>
+            <input type="number" id="projectFilterActualMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.actualMin || ''}">
+          </div>
         </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Customer</div>
-          <select id="projectFilterCustomer" class="form-select">${customerOptions}</select>
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Contract</div>
-          <select id="projectFilterContract" class="form-select">${contractOptions}</select>
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Status</div>
-          <select id="projectFilterStatus" class="form-select">
-            <option value="">All</option>
-            <option value="active" ${filters.status === 'active' ? 'selected' : ''}>Active</option>
-            <option value="paused" ${filters.status === 'paused' ? 'selected' : ''}>Paused</option>
-            <option value="completed" ${filters.status === 'completed' ? 'selected' : ''}>Completed</option>
-          </select>
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Start From</div>
-          <input type="date" id="projectFilterStartFrom" class="form-input" value="${filters.startFrom || ''}">
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">End To</div>
-          <input type="date" id="projectFilterEndTo" class="form-input" value="${filters.endTo || ''}">
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Estimated Hours</div>
-          <input type="number" id="projectFilterEstimatedMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.estimatedMin || ''}">
-        </div>
-        <div class="filter-chip">
-          <div class="filter-chip-label">Actual Hours</div>
-          <input type="number" id="projectFilterActualMin" class="form-input" min="0" step="0.5" placeholder="Min" value="${filters.actualMin || ''}">
+        <div class="project-sort-control">
+          <div class="filter-chip">
+            <div class="filter-chip-label">Sort</div>
+            <select id="projectSortControl" class="form-select" onchange="setProjectSort(this.value)">
+              <option value="newest" ${projectSort === 'newest' ? 'selected' : ''}>Newest First</option>
+              <option value="oldest" ${projectSort === 'oldest' ? 'selected' : ''}>Oldest First</option>
+              <option value="name" ${projectSort === 'name' ? 'selected' : ''}>Project Name A-Z</option>
+              <option value="updated" ${projectSort === 'updated' ? 'selected' : ''}>Recently Updated</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="btn-group" style="justify-content:flex-end">
