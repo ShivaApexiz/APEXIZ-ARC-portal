@@ -704,6 +704,35 @@ body {
   border-radius: 2px;
 }
 
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.panel-header .panel-title {
+  margin-bottom: 0;
+}
+
+.filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.compact-select {
+  min-width: 132px;
+  padding: 6px 8px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 6px;
+  background: var(--white);
+  font: inherit;
+}
+
 /* ── TABLE ── */
 .table-wrapper {
   background: var(--white);
@@ -1388,7 +1417,18 @@ const STATE = {
   customers: [],
   contracts: [],
   timeLogs: [],
-  currentPanel: 'dashboard'
+  currentPanel: 'dashboard',
+  projectFilters: {
+    customerId: '',
+    contractId: '',
+    status: '',
+    search: ''
+  },
+  contractFilters: {
+    customerId: '',
+    activity: '',
+    search: ''
+  }
 };
 
 const COUNTRIES = [
@@ -1739,7 +1779,7 @@ function routeUser(profile) {
     const contractsNav = document.getElementById('navContracts');
     contractsNav?.insertAdjacentHTML(
       'afterend',
-      '<button class="nav-item" id="navProjects" onclick="showPanel(\'projects\')">Projects</button>'
+      '<button class="nav-item" id="navProjects" onclick="showPanel(\'projects\')">&#128451; Projects</button>'
     );
   }
 
@@ -1780,6 +1820,26 @@ async function renderDashboardV2() {
     .from('arc_contracts')
     .select('*, arc_customers(company_name), arc_projects(id, project_name)')
     .order('start_date', { ascending: false });
+
+  if (error) {
+    document.getElementById('mainContent').innerHTML = `<div class="alert error show">Unable to load contracts: ${error.message}</div>`;
+    return;
+  }
+
+  const filters = STATE.contractFilters || {};
+  const today = new Date().toISOString().split('T')[0];
+  const customerOptions = ['<option value="">All Customers</option>']
+    .concat([...(new Map((contracts || []).map(contract => [contract.customer_id, contract.arc_customers?.company_name || 'Unknown'])))]
+      .map(([id, name]) => `<option value="${id}" ${filters.customerId === id ? 'selected' : ''}>${name}</option>`))
+    .join('');
+  const filteredContracts = (contracts || []).filter(contract => {
+    const customerMatch = !filters.customerId || contract.customer_id === filters.customerId;
+    const searchMatch = !filters.search || [contract.contract_name, contract.arc_customers?.company_name].some(value => (value || '').toLowerCase().includes(filters.search));
+    const activityMatch = !filters.activity
+      || (filters.activity === 'active' && (!contract.end_date || contract.end_date >= today))
+      || (filters.activity === 'ended' && contract.end_date && contract.end_date < today);
+    return customerMatch && searchMatch && activityMatch;
+  });
 
   if (isCustomer) contractQuery = contractQuery.eq('customer_id', customerId);
 
@@ -2228,9 +2288,55 @@ async function renderContracts() {
     .select('*, arc_customers(company_name), arc_projects(id, project_name), arc_time_logs(hours)')
     .order('start_date', { ascending: false });
 
+  if (error) {
+    document.getElementById('mainContent').innerHTML = `<div class="alert error show">Unable to load contracts: ${error.message}</div>`;
+    return;
+  }
+
+  const filters = STATE.contractFilters || {};
+  const today = new Date().toISOString().split('T')[0];
+  const customerOptions = ['<option value="">All Customers</option>']
+    .concat([...(new Map((contracts || []).map(contract => [contract.customer_id, contract.arc_customers?.company_name || 'Unknown'])))]
+      .map(([id, name]) => `<option value="${id}" ${filters.customerId === id ? 'selected' : ''}>${name}</option>`))
+    .join('');
+  const filteredContracts = (contracts || []).filter(contract => {
+    const customerMatch = !filters.customerId || contract.customer_id === filters.customerId;
+    const searchMatch = !filters.search || [contract.contract_name, contract.arc_customers?.company_name].some(value => (value || '').toLowerCase().includes(filters.search));
+    const activityMatch = !filters.activity
+      || (filters.activity === 'active' && (!contract.end_date || contract.end_date >= today))
+      || (filters.activity === 'ended' && contract.end_date && contract.end_date < today);
+    return customerMatch && searchMatch && activityMatch;
+  });
+
   let html = `
-    <div class="panel-title">📋 Contracts</div>
-    <button class="btn btn-primary" onclick="openContractModal()">+ New Contract</button>
+    <div class="panel-header">
+      <div class="panel-title">Contracts</div>
+      <button class="btn btn-primary" onclick="openContractModal()">+ New Contract</button>
+    </div>
+    <div class="form-card">
+      <div class="filter-bar">
+        <div class="form-group">
+          <label class="form-label">Customer</label>
+          <select id="contractFilterCustomer" class="form-select">${customerOptions}</select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Activity</label>
+          <select id="contractFilterActivity" class="form-select">
+            <option value="">All</option>
+            <option value="active" ${filters.activity === 'active' ? 'selected' : ''}>Active</option>
+            <option value="ended" ${filters.activity === 'ended' ? 'selected' : ''}>Ended</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Search</label>
+          <input type="text" id="contractFilterSearch" class="form-input" placeholder="Search contract or customer" value="${filters.search || ''}">
+        </div>
+      </div>
+      <div class="btn-group" style="justify-content:flex-end">
+        <button class="btn btn-secondary" onclick="resetContractFilters()">Reset Filters</button>
+        <button class="btn btn-primary" onclick="applyContractFilters()">Apply Filters</button>
+      </div>
+    </div>
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
@@ -2239,11 +2345,11 @@ async function renderContracts() {
         <tbody>
   `;
 
-  if (contracts && contracts.length > 0) {
-    html += contracts.map(c => `
+  if (filteredContracts.length > 0) {
+    html += filteredContracts.map(c => `
       <tr>
-        <td><strong>${c.contract_name || '—'}</strong></td>
-        <td><strong>${c.arc_customers?.company_name || '—'}</strong></td>
+        <td><strong>${c.contract_name || '?'}</strong></td>
+        <td><strong>${c.arc_customers?.company_name || '?'}</strong></td>
         <td>${formatDate(c.start_date)}</td>
         <td>${formatDate(c.end_date)}</td>
         <td>${formatCurrency(c.total_hours)}</td>
@@ -2256,7 +2362,7 @@ async function renderContracts() {
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="8" style="text-align:center;padding:40px">No contracts yet.</td></tr>';
+    html += '<tr><td colspan="8" style="text-align:center;padding:40px">No contracts found.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -2492,7 +2598,36 @@ function buildProjectContractOptions(contracts, selectedContractId = '') {
   return contractOptions;
 }
 
-function renderProjectForm(contractOptions, project = {}, contractId = '') {
+function applyProjectFilters() {
+  STATE.projectFilters = {
+    customerId: document.getElementById('projectFilterCustomer')?.value || '',
+    contractId: document.getElementById('projectFilterContract')?.value || '',
+    status: document.getElementById('projectFilterStatus')?.value || '',
+    search: (document.getElementById('projectFilterSearch')?.value || '').trim().toLowerCase()
+  };
+  renderProjects();
+}
+
+function resetProjectFilters() {
+  STATE.projectFilters = { customerId: '', contractId: '', status: '', search: '' };
+  renderProjects();
+}
+
+function applyContractFilters() {
+  STATE.contractFilters = {
+    customerId: document.getElementById('contractFilterCustomer')?.value || '',
+    activity: document.getElementById('contractFilterActivity')?.value || '',
+    search: (document.getElementById('contractFilterSearch')?.value || '').trim().toLowerCase()
+  };
+  renderContracts();
+}
+
+function resetContractFilters() {
+  STATE.contractFilters = { customerId: '', activity: '', search: '' };
+  renderContracts();
+}
+
+function renderProjectForm(contractOptions, project = {}, actualHours = 0) {
   return `
     <div class="form-card">
       <div class="form-row">
@@ -2530,24 +2665,51 @@ function renderProjectForm(contractOptions, project = {}, contractId = '') {
         </div>
         <div class="form-group">
           <label class="form-label">Actual Hours</label>
-          <input type="number" id="projectActualHours" class="form-input" min="0" step="0.5" value="${project.actual_hours ?? ''}">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select id="projectStatus" class="form-select">
-            <option value="active" ${!project.status || project.status === 'active' ? 'selected' : ''}>Active</option>
-            <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>Completed</option>
-            <option value="paused" ${project.status === 'paused' ? 'selected' : ''}>Paused</option>
-          </select>
+          <input type="text" class="form-input" value="${formatCurrency(actualHours)}" readonly>
         </div>
       </div>
-      <div class="btn-group">
-        <button class="btn btn-primary" onclick="saveProject(${project.id ? `'${project.id}'` : 'null'}, '${contractId || project.contract_id || ''}')">${project.id ? 'Update Project' : 'Create Project'}</button>
-        ${project.id ? '<button class="btn btn-secondary" onclick="showPanel(\'projects\')">Cancel</button>' : ''}
+      <div class="btn-group" style="justify-content:flex-end">
+        <button class="btn btn-primary" onclick="saveProject('${project.id || ''}')">${project.id ? 'Update Project' : 'Create Project'}</button>
       </div>
       <div id="projectMsg" class="auth-msg"></div>
     </div>
   `;
+}
+
+async function openProjectModal(projectId = '') {
+  const { contracts, projects, loggedHoursByProject, error } = await fetchProjectScreenData();
+  if (error) {
+    alert('Unable to load project editor: ' + error.message);
+    return;
+  }
+
+  const project = projectId ? projects.find(item => item.id === projectId) : null;
+  if (projectId && !project) {
+    alert('Project not found');
+    return;
+  }
+
+  const modal = document.getElementById('modalContent');
+  modal.innerHTML = `
+    <div class="modal-title">
+      <span>${project ? 'Edit Project' : 'New Project'}</span>
+      <button class="modal-close" onclick="closeModal()">x</button>
+    </div>
+    ${renderProjectForm(buildProjectContractOptions(contracts, project?.contract_id || ''), project || {}, loggedHoursByProject[project?.id] || 0)}
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+async function toggleProjectStatus(projectId, status) {
+  loading(true, 'Updating status...');
+  const { error } = await sb.from('arc_projects').update({ status }).eq('id', projectId);
+  loading(false);
+  if (error) {
+    alert('Error updating project status: ' + error.message);
+    return;
+  }
+  if (document.getElementById('modalOverlay')?.classList.contains('open')) closeModal();
+  renderProjects();
 }
 
 async function renderProjects() {
@@ -2559,12 +2721,31 @@ async function renderProjects() {
     return;
   }
 
-  const rows = projects.length
-    ? projects.map(project => {
+  const filters = STATE.projectFilters || {};
+  const customerOptions = ['<option value="">All Customers</option>']
+    .concat([...(new Map(contracts.map(contract => [contract.customer_id, contract.arc_customers?.company_name || 'Unknown'])))]
+      .map(([id, name]) => `<option value="${id}" ${filters.customerId === id ? 'selected' : ''}>${name}</option>`))
+    .join('');
+  const contractOptions = ['<option value="">All Contracts</option>']
+    .concat(contracts.map(contract => `<option value="${contract.id}" ${filters.contractId === contract.id ? 'selected' : ''}>${contract.contract_name || (contract.arc_customers?.company_name || 'Contract')}</option>`))
+    .join('');
+
+  const filteredProjects = projects.filter(project => {
+    const contract = contractMap[project.contract_id];
+    const customerMatch = !filters.customerId || contract?.customer_id === filters.customerId;
+    const contractMatch = !filters.contractId || project.contract_id === filters.contractId;
+    const statusMatch = !filters.status || (project.status || 'active') === filters.status;
+    const searchMatch = !filters.search || [project.project_name, project.project_description, contract?.contract_name, contract?.arc_customers?.company_name]
+      .some(value => (value || '').toLowerCase().includes(filters.search));
+    return customerMatch && contractMatch && statusMatch && searchMatch;
+  });
+
+  const rows = filteredProjects.length
+    ? filteredProjects.map(project => {
         const contract = contractMap[project.contract_id];
         const customerName = contract?.arc_customers?.company_name || 'Unknown';
-        const contractName = contract?.contract_name || '—';
-        const actualHours = project.actual_hours ?? loggedHoursByProject[project.id] ?? 0;
+        const contractName = contract?.contract_name || '?';
+        const actualHours = loggedHoursByProject[project.id] || 0;
         return `
           <tr>
             <td><strong>${project.project_name}</strong></td>
@@ -2575,19 +2756,56 @@ async function renderProjects() {
             <td>${formatDate(project.actual_end_date)}</td>
             <td>${formatCurrency(project.estimated_hours || 0)}</td>
             <td>${formatCurrency(actualHours)}</td>
-            <td>${project.status || 'active'}</td>
             <td>
-              <button class="btn btn-sm btn-secondary" onclick="editProject('${project.id}')">Edit</button>
+              <select class="compact-select" onchange="toggleProjectStatus('${project.id}', this.value)">
+                <option value="active" ${(project.status || 'active') === 'active' ? 'selected' : ''}>Active</option>
+                <option value="paused" ${project.status === 'paused' ? 'selected' : ''}>Paused</option>
+                <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>Completed</option>
+              </select>
+            </td>
+            <td>
+              <button class="btn btn-sm btn-secondary" onclick="openProjectModal('${project.id}')">Edit</button>
               <button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}')">Delete</button>
             </td>
           </tr>
         `;
       }).join('')
-    : '<tr><td colspan="10" style="text-align:center;padding:28px">No projects yet.</td></tr>';
+    : '<tr><td colspan="10" style="text-align:center;padding:28px">No projects found.</td></tr>';
 
   main.innerHTML = `
-    <div class="panel-title">Projects</div>
-    ${renderProjectForm(buildProjectContractOptions(contracts))}
+    <div class="panel-header">
+      <div class="panel-title">&#128451; Projects</div>
+      <button class="btn btn-primary" onclick="openProjectModal()">+ New Project</button>
+    </div>
+    <div class="form-card">
+      <div class="filter-bar">
+        <div class="form-group">
+          <label class="form-label">Customer</label>
+          <select id="projectFilterCustomer" class="form-select">${customerOptions}</select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contract</label>
+          <select id="projectFilterContract" class="form-select">${contractOptions}</select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select id="projectFilterStatus" class="form-select">
+            <option value="">All</option>
+            <option value="active" ${filters.status === 'active' ? 'selected' : ''}>Active</option>
+            <option value="paused" ${filters.status === 'paused' ? 'selected' : ''}>Paused</option>
+            <option value="completed" ${filters.status === 'completed' ? 'selected' : ''}>Completed</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Search</label>
+          <input type="text" id="projectFilterSearch" class="form-input" placeholder="Search project, contract, or customer" value="${filters.search || ''}">
+        </div>
+      </div>
+      <div class="btn-group" style="justify-content:flex-end">
+        <button class="btn btn-secondary" onclick="resetProjectFilters()">Reset Filters</button>
+        <button class="btn btn-primary" onclick="applyProjectFilters()">Apply Filters</button>
+      </div>
+    </div>
     <div class="table-wrapper">
       <table class="data-table">
         <thead><tr><th>Project</th><th>Customer</th><th>Contract</th><th>Start Date</th><th>Estimated End</th><th>Actual End</th><th>Estimated Hours</th><th>Actual Hours</th><th>Status</th><th>Actions</th></tr></thead>
@@ -2598,23 +2816,7 @@ async function renderProjects() {
 }
 
 async function editProject(projectId) {
-  const main = document.getElementById('mainContent');
-  const { contracts, projects, error } = await fetchProjectScreenData();
-  if (error) {
-    main.innerHTML = `<div class="alert error show">Unable to load project editor: ${error.message}</div>`;
-    return;
-  }
-
-  const project = projects.find(item => item.id === projectId);
-  if (!project) {
-    alert('Project not found');
-    return;
-  }
-
-  main.innerHTML = `
-    <div class="panel-title">Edit Project</div>
-    ${renderProjectForm(buildProjectContractOptions(contracts, project.contract_id), project)}
-  `;
+  await openProjectModal(projectId);
 }
 
 async function openProjectsModal(contractId) {
@@ -2635,8 +2837,14 @@ async function openProjectsModal(contractId) {
       <td><strong>${project.project_name}</strong></td>
       <td>${formatDate(project.start_date)}</td>
       <td>${formatDate(project.estimated_end_date)}</td>
-      <td>${formatCurrency(project.actual_hours ?? loggedHoursByProject[project.id] ?? 0)}</td>
-      <td>${project.status || 'active'}</td>
+      <td>${formatCurrency(loggedHoursByProject[project.id] || 0)}</td>
+      <td>
+        <select class="compact-select" onchange="toggleProjectStatus('${project.id}', this.value)">
+          <option value="active" ${(project.status || 'active') === 'active' ? 'selected' : ''}>Active</option>
+          <option value="paused" ${project.status === 'paused' ? 'selected' : ''}>Paused</option>
+          <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>Completed</option>
+        </select>
+      </td>
       <td><button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}', '${contractId}')">Delete</button></td>
     </tr>
   `).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px">No projects yet.</td></tr>';
@@ -2647,7 +2855,9 @@ async function openProjectsModal(contractId) {
       <span>Projects - ${contract.arc_customers?.company_name || 'Customer'}</span>
       <button class="modal-close" onclick="closeModal()">x</button>
     </div>
-    ${renderProjectForm(buildProjectContractOptions(contracts, contractId), {}, contractId)}
+    <div class="btn-group" style="justify-content:flex-end;margin-bottom:12px">
+      <button class="btn btn-primary" onclick="closeModal(); openProjectModal()">+ New Project</button>
+    </div>
     <div class="table-wrapper">
       <table class="data-table">
         <thead><tr><th>Project</th><th>Start Date</th><th>Estimated End</th><th>Actual Hours</th><th>Status</th><th>Actions</th></tr></thead>
@@ -2659,19 +2869,34 @@ async function openProjectsModal(contractId) {
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-async function saveProject(projectId = null, fallbackContractId = '') {
-  const contractId = document.getElementById('projectContract')?.value || fallbackContractId;
+async function saveProject(projectId = '') {
+  const contractId = document.getElementById('projectContract')?.value;
   const projectName = document.getElementById('projectName')?.value.trim();
   const projectDescription = document.getElementById('projectDescription')?.value.trim();
   const startDate = document.getElementById('projectStartDate')?.value;
   const estimatedEndDate = document.getElementById('projectEstimatedEndDate')?.value;
   const actualEndDate = document.getElementById('projectActualEndDate')?.value;
   const estimatedHours = document.getElementById('projectEstimatedHours')?.value;
-  const actualHours = document.getElementById('projectActualHours')?.value;
-  const status = document.getElementById('projectStatus')?.value || 'active';
 
   if (!contractId || !projectName) {
     showMsg('projectMsg', 'Please select a contract and enter a project name', 'error');
+    return;
+  }
+
+  const { data: existingProjects, error: duplicateError } = await sb
+    .from('arc_projects')
+    .select('id, project_name')
+    .eq('contract_id', contractId);
+
+  if (duplicateError) {
+    showMsg('projectMsg', 'Error checking project name: ' + duplicateError.message, 'error');
+    return;
+  }
+
+  const normalizedName = projectName.toLowerCase();
+  const duplicate = (existingProjects || []).find(project => project.project_name?.toLowerCase() === normalizedName && project.id !== projectId);
+  if (duplicate) {
+    showMsg('projectMsg', 'Project name must be unique within a contract', 'error');
     return;
   }
 
@@ -2684,9 +2909,9 @@ async function saveProject(projectId = null, fallbackContractId = '') {
     estimated_end_date: estimatedEndDate || null,
     actual_end_date: actualEndDate || null,
     estimated_hours: estimatedHours ? parseFloat(estimatedHours) : null,
-    actual_hours: actualHours ? parseFloat(actualHours) : null,
-    status
+    status: projectId ? undefined : 'active'
   };
+  if (payload.status === undefined) delete payload.status;
 
   loading(true, projectId ? 'Updating project...' : 'Saving project...');
   const query = projectId
@@ -2700,11 +2925,7 @@ async function saveProject(projectId = null, fallbackContractId = '') {
     return;
   }
 
-  if (document.getElementById('modalOverlay')?.classList.contains('open')) {
-    await openProjectsModal(contractId);
-    return;
-  }
-
+  closeModal();
   showPanel('projects');
 }
 
