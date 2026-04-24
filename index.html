@@ -2512,25 +2512,39 @@ async function deleteTimeLog(id) {
 
 /* ── LOG TIME (ADMIN) ── */
 async function renderLogTime() {
-  const { data: contracts, error } = await sb
-    .from('arc_contracts')
-    .select('id, contract_name, arc_customers(company_name), arc_projects(id, project_name, status)')
-    .gte('end_date', new Date().toISOString().split('T')[0])
-    .order('start_date', { ascending: false });
+  const today = new Date().toISOString().split('T')[0];
+  const [contractsRes, projectsRes] = await Promise.all([
+    sb
+      .from('arc_contracts')
+      .select('id, contract_name, customer_id, arc_customers(company_name)')
+      .gte('end_date', today)
+      .order('start_date', { ascending: false }),
+    sb
+      .from('arc_projects')
+      .select('id, contract_id, project_name, status')
+      .order('created_at', { ascending: false })
+  ]);
 
-  if (error) {
-    document.getElementById('mainContent').innerHTML = `<div class="panel-title">Log Time</div><div class="alert error show">Unable to load active projects: ${error.message}</div>`;
+  if (contractsRes.error || projectsRes.error) {
+    const message = contractsRes.error?.message || projectsRes.error?.message || 'Unknown error';
+    document.getElementById('mainContent').innerHTML = `<div class="panel-title">Log Time</div><div class="alert error show">Unable to load active projects: ${message}</div>`;
     return;
   }
 
+  const contracts = contractsRes.data || [];
+  const projects = projectsRes.data || [];
+  const contractMap = Object.fromEntries(contracts.map(contract => [contract.id, contract]));
+
   let projectOptions = '<option value="">Select Customer / Contract / Project</option>';
   let optionCount = 0;
-  contracts?.forEach(c => {
-    c.arc_projects?.filter(p => (p.status || 'active') === 'active').forEach(p => {
-      optionCount += 1;
-      const contractLabel = c.contract_name ? ` - ${c.contract_name}` : '';
-      projectOptions += `<option value="${c.id}|${p.id}">${c.arc_customers?.company_name || 'Unknown'}${contractLabel} - ${p.project_name}</option>`;
-    });
+  projects.forEach(project => {
+    if ((project.status || 'active') !== 'active') return;
+    const contract = contractMap[project.contract_id];
+    if (!contract) return;
+
+    optionCount += 1;
+    const contractLabel = contract.contract_name ? ` - ${contract.contract_name}` : '';
+    projectOptions += `<option value="${contract.id}|${project.id}">${contract.arc_customers?.company_name || 'Unknown'}${contractLabel} - ${project.project_name}</option>`;
   });
 
   const emptyProjectNotice = optionCount ? '' : '<div class="alert warning show">No active projects available. Open Contracts, add a project to an active contract, then log time.</div>';
