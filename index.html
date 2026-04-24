@@ -2183,6 +2183,18 @@ async function renderDashboardV2() {
     .slice(0, 5);
 
   const maxProjectHours = Math.max(...topProjects.map(project => project.hours), 1);
+  const donutPalette = ['var(--primary)', 'var(--info)', 'var(--success)', 'var(--warning)', 'var(--neutral-500)'];
+  const donutGradient = contractUsedHours.length
+    ? (() => {
+        let cursor = 0;
+        return contractUsedHours.map((item, index) => {
+          const pct = usedHours ? (item.hours / usedHours) * 100 : 0;
+          const start = cursor;
+          cursor += pct;
+          return `${donutPalette[index % donutPalette.length]} ${start}% ${Math.min(cursor, 100)}%`;
+        }).join(', ');
+      })()
+    : 'var(--neutral-200) 0% 100%';
 
   const metricCards = isCustomer
     ? [
@@ -2242,10 +2254,10 @@ async function renderDashboardV2() {
         <div class="overview-pane">
           <div class="card-label">Hours by Contract</div>
           <div class="chart-row">
-            <div class="donut-chart"><div class="donut-center">${formatCurrency(usedHours)}h<span>Total</span></div></div>
+            <div class="donut-chart" style="background: conic-gradient(${donutGradient});"><div class="donut-center">${formatCurrency(usedHours)}h<span>Total</span></div></div>
             <div class="chart-legend">
               ${contractUsedHours.length
-                ? contractUsedHours.map((item, index) => `<div><span class="legend-dot" style="background:${['var(--primary)','var(--info)','var(--success)','var(--warning)','var(--neutral-500)'][index]}"></span>${item.name} ${formatCurrency(item.hours)}h</div>`).join('')
+                ? contractUsedHours.map((item, index) => `<div><span class="legend-dot" style="background:${donutPalette[index % donutPalette.length]}"></span>${item.name} ${formatCurrency(item.hours)}h</div>`).join('')
                 : '<div>No logged hours yet.</div>'}
             </div>
           </div>
@@ -3435,7 +3447,7 @@ async function renderTimeLogs() {
     <div class="table-wrapper">
       <table class="data-table">
         <thead>
-          <tr><th>Date</th><th>Customer</th><th>Project</th><th>Description</th><th>Hours</th><th>Comments</th><th>Logged By</th><th>Actions</th></tr>
+          <tr><th>Date</th><th>Customer</th><th>Project</th><th>Description</th><th>Hours</th><th>Comments</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -3449,7 +3461,6 @@ async function renderTimeLogs() {
         <td>${log.task_name || '-'}</td>
         <td><strong>${formatCurrency(log.hours)}</strong></td>
         <td>${log.comments || log.description || '-'}</td>
-        <td>${log.arc_profiles?.name || '-'}</td>
         <td>
           <button class="btn btn-sm btn-secondary" onclick="editTimeLog('${log.id}')">Edit</button>
           <button class="btn btn-sm btn-danger" onclick="deleteTimeLog('${log.id}')">Delete</button>
@@ -3457,7 +3468,7 @@ async function renderTimeLogs() {
       </tr>
     `).join('');
   } else {
-    html += '<tr><td colspan="8" style="text-align:center;padding:40px">No time logs yet.</td></tr>';
+    html += '<tr><td colspan="7" style="text-align:center;padding:40px">No time logs yet.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -3594,26 +3605,35 @@ async function renderMyContract() {
     .eq('customer_id', STATE.profile.customer_id)
     .order('start_date', { ascending: false });
 
-  let html = '<div class="panel-title">Customer Contracts</div>';
+  let html = '<div class="panel-title">My Contracts</div>';
 
   if (!contracts || contracts.length === 0) {
-    html += '<div class="empty-state"><div class="empty-state-icon">ðŸ“‹</div><div class="empty-state-text">No active contracts found.</div></div>';
+    html += '<div class="empty-state"><div class="empty-state-text">No contracts found.</div></div>';
   } else {
-    const c = contracts[0];
+    const rows = contracts.map(contract => {
+      const usedHours = contract.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
+      const remainingHours = Math.max((contract.total_hours || 0) - usedHours, 0);
+      return `
+        <tr>
+          <td><strong>${contract.contract_name || '-'}</strong></td>
+          <td>${formatDate(contract.start_date)}</td>
+          <td>${formatDate(contract.end_date)}</td>
+          <td>${contract.arc_projects?.length || 0}</td>
+          <td>${formatCurrency(contract.total_hours || 0)}h</td>
+          <td>${formatCurrency(usedHours)}h</td>
+          <td>${formatCurrency(remainingHours)}h</td>
+        </tr>
+      `;
+    }).join('');
+
     html += `
-      <div class="form-card">
-        <div class="form-group">
-          <label class="form-label">Contract Period</label>
-          <input type="text" class="form-input" value="${formatDate(c.start_date)} â€“ ${formatDate(c.end_date)}" readonly>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Total Contracted Hours</label>
-            <input type="text" class="form-input" value="${formatCurrency(c.total_hours)}" readonly style="font-weight:700;color:var(--primary)">
-          </div>
-        </div>
-        ${c.notes ? `<div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" readonly>${c.notes}</textarea></div>` : ''}
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead><tr><th>Contract</th><th>Start Date</th><th>End Date</th><th>Projects</th><th>Total Hours</th><th>Used Hours</th><th>Remaining</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
       </div>
+      <div class="alert info show" style="margin-top:12px">Contract used hours are the sum of all used project hours in a contract.</div>
     `;
   }
 
@@ -3628,7 +3648,7 @@ async function renderMyHours() {
     .eq('customer_id', STATE.profile.customer_id)
     .order('start_date', { ascending: false });
 
-  let html = '<div class="panel-title">â± Hours Usage</div>';
+  let html = '<div class="panel-title">Hours Usage</div>';
 
   if (!contracts || contracts.length === 0) {
     html += '<div class="empty-state"><div class="empty-state-icon">ðŸ“‹</div><div class="empty-state-text">No active contracts found.</div></div>';
