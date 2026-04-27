@@ -1053,6 +1053,77 @@ body {
   border-bottom: none;
 }
 
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row td {
+  transition: background 0.15s;
+}
+
+.text-preview-btn {
+  width: 100%;
+  max-width: 320px;
+  border: 0;
+  background: transparent;
+  color: var(--dark);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.text-preview-btn:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.time-log-table {
+  min-width: 980px;
+}
+
+.time-log-table .detail-col {
+  width: 22%;
+}
+
+.text-detail-popover {
+  position: fixed;
+  z-index: 3000;
+  left: 50%;
+  top: 50%;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(420px, calc(100vh - 48px));
+  transform: translate(-50%, -50%);
+  background: var(--white);
+  border: 1px solid var(--neutral-200);
+  border-radius: 8px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.22);
+  padding: 18px;
+  overflow: auto;
+}
+
+.text-detail-popover-title {
+  margin-bottom: 10px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.text-detail-popover-body {
+  color: var(--dark);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
 .badge {
   display: inline-block;
   padding: 3px 10px;
@@ -1831,7 +1902,44 @@ function formatCurrency(num) {
 }
 
 function formatDate(date) {
+  if (!date) return '-';
   return new Date(date).toLocaleDateString('en-GB');
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderExpandableText(value, title = 'Details', limit = 96) {
+  const text = String(value || '').trim();
+  if (!text) return '-';
+  const clipped = text.length > limit ? text.slice(0, limit - 1).trimEnd() + '...' : text;
+  const safeTitleArg = escapeHtml(JSON.stringify(title));
+  const safeTextArg = escapeHtml(JSON.stringify(text));
+  return `<button type="button" class="text-preview-btn" onclick="event.stopPropagation(); showTextDetail(${safeTitleArg}, ${safeTextArg})">${escapeHtml(clipped)}</button>`;
+}
+
+function showTextDetail(title, text) {
+  closeTextDetail();
+  const popover = document.createElement('div');
+  popover.id = 'textDetailPopover';
+  popover.className = 'text-detail-popover';
+  popover.innerHTML = `
+    <div class="text-detail-popover-title">${escapeHtml(title)}</div>
+    <div class="text-detail-popover-body">${escapeHtml(text)}</div>
+  `;
+  popover.addEventListener('click', event => event.stopPropagation());
+  document.body.appendChild(popover);
+  setTimeout(() => document.addEventListener('click', closeTextDetail, { once: true }), 0);
+}
+
+function closeTextDetail() {
+  document.getElementById('textDetailPopover')?.remove();
 }
 
 function getUsageStatus(used, total) {
@@ -2225,7 +2333,7 @@ async function renderDashboardV2() {
     ? contracts.slice(0, 6).map(contract => {
         const used = usedByContract[contract.id] || 0;
         return `
-          <tr>
+          <tr class="clickable-row" onclick="renderContractDashboard('${contract.id}')">
             <td>${contract.contract_name || '-'}</td>
             <td>${contract.arc_customers?.company_name || '-'}</td>
             <td>${formatDate(contract.start_date)}</td>
@@ -2292,6 +2400,163 @@ async function renderDashboardV2() {
         </table>
       </div>
       ${isCustomer ? '<div class="alert info show" style="margin:12px 16px 16px">Contract used hours are the sum of all used project hours in a contract.</div>' : ''}
+    </div>
+  `;
+}
+
+async function renderContractDashboard(contractId) {
+  const main = document.getElementById('mainContent');
+  loading(true, 'Loading contract dashboard...');
+
+  const contractRes = await sb
+    .from('arc_contracts')
+    .select('*')
+    .eq('id', contractId)
+    .single();
+
+  if (contractRes.error || !contractRes.data) {
+    loading(false);
+    main.innerHTML = `<div class="alert error show">Unable to load contract dashboard: ${contractRes.error?.message || 'Contract not found'}</div>`;
+    return;
+  }
+
+  const contract = contractRes.data;
+  if (STATE.profile.role === 'customer' && contract.customer_id !== STATE.profile.customer_id) {
+    loading(false);
+    main.innerHTML = '<div class="alert error show">You do not have access to this contract.</div>';
+    return;
+  }
+
+  const [customerRes, projectsRes, logsRes] = await Promise.all([
+    contract.customer_id
+      ? sb.from('arc_customers').select('company_name').eq('id', contract.customer_id).single()
+      : Promise.resolve({ data: null }),
+    sb.from('arc_projects').select('*').eq('contract_id', contractId).order('start_date', { ascending: false }),
+    sb.from('arc_time_logs').select('*').eq('contract_id', contractId).order('work_date', { ascending: false })
+  ]);
+
+  loading(false);
+
+  const queryError = customerRes.error || projectsRes.error || logsRes.error;
+  if (queryError) {
+    main.innerHTML = `<div class="alert error show">Unable to load contract dashboard: ${queryError.message}</div>`;
+    return;
+  }
+
+  const customer = customerRes.data || {};
+  const projects = projectsRes.data || [];
+  const logs = logsRes.data || [];
+  const projectMap = projects.reduce((acc, project) => {
+    acc[project.id] = project;
+    return acc;
+  }, {});
+  const usedHours = logs.reduce((sum, log) => sum + (log.hours || 0), 0);
+  const totalHours = contract.total_hours || 0;
+  const remainingHours = Math.max(totalHours - usedHours, 0);
+  const usagePercent = totalHours ? Math.min((usedHours / totalHours) * 100, 100) : 0;
+  const projectHours = projects.map(project => {
+    const hours = logs
+      .filter(log => log.project_id === project.id)
+      .reduce((sum, log) => sum + (log.hours || 0), 0);
+    return { ...project, hours };
+  }).sort((left, right) => right.hours - left.hours);
+  const maxProjectHours = Math.max(...projectHours.map(project => project.hours), 1);
+
+  const projectRows = projectHours.length
+    ? projectHours.map(project => `
+      <tr>
+        <td>${escapeHtml(project.project_name || '-')}</td>
+        <td>${formatDate(project.start_date)}</td>
+        <td>${formatDate(project.estimated_end_date)}</td>
+        <td>${formatCurrency(project.estimated_hours)}h</td>
+        <td>${formatCurrency(project.hours)}h</td>
+        <td><span class="badge ${(project.status || 'active').toLowerCase()}">${escapeHtml(project.status || 'Active')}</span></td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="6" style="text-align:center;padding:28px">No projects found for this contract.</td></tr>';
+
+  const logRows = logs.length
+    ? logs.slice(0, 8).map(log => `
+      <tr>
+        <td>${formatDate(log.work_date)}</td>
+        <td>${escapeHtml(projectMap[log.project_id]?.project_name || '-')}</td>
+        <td>${renderExpandableText(log.description || log.task_name, 'Description')}</td>
+        <td>${formatCurrency(log.hours)}h</td>
+        <td>${renderExpandableText(log.comments, 'Comments')}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="5" style="text-align:center;padding:28px">No time logs yet.</td></tr>';
+
+  main.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title">${escapeHtml(contract.contract_name || 'Contract Dashboard')}</div>
+      <button class="btn btn-secondary page-action-btn" onclick="renderDashboardV2()">Back to Dashboard</button>
+    </div>
+
+    <div class="dashboard-shell-grid">
+      <div class="card">
+        <div class="card-label">Customer</div>
+        <div class="card-value" style="font-size:20px">${escapeHtml(customer.company_name || '-')}</div>
+        <div class="card-sub">Contract owner</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total Hours</div>
+        <div class="card-value">${formatCurrency(totalHours)}h</div>
+        <div class="card-sub">Contracted</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Used Hours</div>
+        <div class="card-value">${formatCurrency(usedHours)}h</div>
+        <div class="card-sub">${usagePercent.toFixed(1)}% used</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Remaining Hours</div>
+        <div class="card-value">${formatCurrency(remainingHours)}h</div>
+        <div class="card-sub">${projects.length} projects</div>
+      </div>
+    </div>
+
+    <div class="dashboard-section">
+      <div class="dashboard-section-header">Contract Usage</div>
+      <div class="overview-grid">
+        <div class="overview-pane">
+          <div class="card-label">Hours Used</div>
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress-fill ${getUsageStatus(usedHours, totalHours || 1)}" style="width:${usagePercent}%"></div>
+            </div>
+          </div>
+          <div class="card-sub" style="margin-top:10px">${formatCurrency(usedHours)}h of ${formatCurrency(totalHours)}h</div>
+        </div>
+        <div class="overview-pane">
+          <div class="card-label">Hours by Project</div>
+          <div class="bar-list">
+            ${projectHours.filter(project => project.hours > 0).length
+              ? projectHours.filter(project => project.hours > 0).slice(0, 5).map(project => `<div class="bar-item"><span>${escapeHtml(project.project_name)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max((project.hours / maxProjectHours) * 100, 6)}%"></div></div><strong>${formatCurrency(project.hours)}h</strong></div>`).join('')
+              : '<div class="empty-state-text">No project hours logged yet.</div>'}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-section">
+      <div class="dashboard-section-header">Projects</div>
+      <div class="table-section-body">
+        <table class="data-table">
+          <thead><tr><th>Project</th><th>Start Date</th><th>Estimated End</th><th>Estimated Hours</th><th>Actual Hours</th><th>Status</th></tr></thead>
+          <tbody>${projectRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="dashboard-section">
+      <div class="dashboard-section-header">Recent Contract Time Logs</div>
+      <div class="table-section-body">
+        <table class="data-table time-log-table">
+          <thead><tr><th>Date</th><th>Project</th><th class="detail-col">Description</th><th>Hours</th><th class="detail-col">Comments</th></tr></thead>
+          <tbody>${logRows}</tbody>
+        </table>
+      </div>
     </div>
   `;
 }
@@ -3445,9 +3710,9 @@ async function renderTimeLogs() {
   let html = `
     <div class="panel-title">Time Logs</div>
     <div class="table-wrapper">
-      <table class="data-table">
+      <table class="data-table time-log-table">
         <thead>
-          <tr><th>Date</th><th>Customer</th><th>Project</th><th>Description</th><th>Hours</th><th>Comments</th><th>Actions</th></tr>
+          <tr><th>Date</th><th>Customer</th><th>Project</th><th class="detail-col">Description</th><th>Hours</th><th class="detail-col">Comments</th><th>Actions</th></tr>
         </thead>
         <tbody>
   `;
@@ -3458,12 +3723,12 @@ async function renderTimeLogs() {
         <td>${formatDate(log.work_date)}</td>
         <td><strong>${log.arc_contracts?.arc_customers?.company_name || '-'}</strong></td>
         <td>${log.arc_projects?.project_name || '-'}</td>
-        <td>${log.task_name || '-'}</td>
+        <td>${renderExpandableText(log.description || log.task_name, 'Description', 120)}</td>
         <td><strong>${formatCurrency(log.hours)}</strong></td>
-        <td>${log.comments || log.description || '-'}</td>
+        <td>${renderExpandableText(log.comments, 'Comments', 120)}</td>
         <td>
-          <button class="btn btn-sm btn-secondary" onclick="editTimeLog('${log.id}')">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteTimeLog('${log.id}')">Delete</button>
+          <button class="btn btn-sm btn-secondary table-action-btn" onclick="editTimeLog('${log.id}')">Edit</button>
+          <button class="btn btn-sm btn-danger table-action-btn" onclick="deleteTimeLog('${log.id}')">Delete</button>
         </td>
       </tr>
     `).join('');
