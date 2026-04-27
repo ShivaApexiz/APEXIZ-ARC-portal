@@ -1881,6 +1881,7 @@ const STATE = {
     status: ''
   }
 };
+let customerFilterTimer = null;
 
 const COUNTRIES = [
   ['Afghanistan', '+93'],
@@ -2924,7 +2925,7 @@ async function renderCustomers() {
         <div class="viewer-row-label">Filters</div>
         <div class="viewer-filter-controls-customer">
           <div class="filter-chip viewer-toolbar-search">
-            <input type="text" id="customerFilterSearch" class="form-input" placeholder="Search customer/contact/email" value="${filters.search || ''}" oninput="applyCustomerFilters()">
+            <input type="text" id="customerFilterSearch" class="form-input" placeholder="Search customer/contact/email" value="${filters.search || ''}" oninput="queueCustomerFilters()">
           </div>
           <div class="filter-chip">
             <select id="customerFilterCountry" class="form-select" onchange="applyCustomerFilters()">${countryOptions}</select>
@@ -3335,7 +3336,7 @@ async function openContractModal(contractId = '') {
       </div>
       <div class="form-group">
         <label class="form-label">Customer</label>
-        <select id="contractCust" class="form-select">${custOptions}</select>
+        <select id="contractCust" class="form-select" ${contractId ? 'disabled' : ''}>${custOptions}</select>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -3378,12 +3379,12 @@ async function saveContract(contractId = '') {
 
   const payload = {
     contract_name: contractName,
-    customer_id: custId,
     start_date: start,
     end_date: end,
     total_hours: hours,
     notes: notes || null
   };
+  if (!contractId) payload.customer_id = custId;
   const { error } = contractId
     ? await sb.from('arc_contracts').update(payload).eq('id', contractId)
     : await sb.from('arc_contracts').insert(payload);
@@ -3594,6 +3595,11 @@ function applyContractFilters() {
   renderContracts();
 }
 
+function queueCustomerFilters() {
+  clearTimeout(customerFilterTimer);
+  customerFilterTimer = setTimeout(applyCustomerFilters, 250);
+}
+
 function resetContractFilters() {
   STATE.contractFilters = { customerId: '', activity: '', search: '', startFrom: '', endTo: '', usedMin: '', totalMin: '', remainingMin: '' };
   renderContracts();
@@ -3619,7 +3625,7 @@ function renderProjectForm(contractOptions, project = {}, actualHours = 0) {
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Contract</label>
-          <select id="projectContract" class="form-select">${contractOptions}</select>
+          <select id="projectContract" class="form-select" ${project.id ? 'disabled' : ''}>${contractOptions}</select>
         </div>
         <div class="form-group">
           <label class="form-label">Project Name</label>
@@ -3925,7 +3931,6 @@ async function saveProject(projectId = '') {
   }
 
   const payload = {
-    contract_id: contractId,
     project_name: projectName,
     project_description: projectDescription || null,
     notes: projectDescription || null,
@@ -3935,6 +3940,7 @@ async function saveProject(projectId = '') {
     estimated_hours: estimatedHours ? parseFloat(estimatedHours) : null,
     status: projectId ? undefined : 'active'
   };
+  if (!projectId) payload.contract_id = contractId;
   if (payload.status === undefined) delete payload.status;
 
   loading(true, projectId ? 'Updating project...' : 'Saving project...');
