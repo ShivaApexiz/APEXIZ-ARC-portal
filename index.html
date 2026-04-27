@@ -1942,6 +1942,18 @@ function closeTextDetail() {
   document.getElementById('textDetailPopover')?.remove();
 }
 
+function getFallbackCustomerProfile(user) {
+  const meta = user?.user_metadata || {};
+  if (meta.role !== 'customer' || !meta.customer_id) return null;
+  return {
+    id: user.id,
+    name: meta.name || user.email?.split('@')[0] || 'Customer',
+    email: user.email || meta.email || '',
+    role: 'customer',
+    customer_id: meta.customer_id
+  };
+}
+
 function getUsageStatus(used, total) {
   const pct = (used / total) * 100;
   if (pct >= 100) return 'critical';
@@ -2040,6 +2052,15 @@ async function doLogin(e) {
       .select('*')
       .eq('id', data.user.id)
       .single();
+
+    const fallbackProfile = profileErr || !profile ? getFallbackCustomerProfile(data.user) : null;
+    if (fallbackProfile) {
+      STATE.user = data.user;
+      STATE.profile = fallbackProfile;
+      loading(false);
+      routeUser(fallbackProfile);
+      return;
+    }
 
     if (profileErr || !profile) {
       console.error('Profile lookup failed:', {
@@ -2144,6 +2165,14 @@ async function restoreSession(session) {
     .select('*')
     .eq('id', session.user.id)
     .single();
+
+  const fallbackProfile = profileErr || !profile ? getFallbackCustomerProfile(session.user) : null;
+  if (fallbackProfile) {
+    STATE.user = session.user;
+    STATE.profile = fallbackProfile;
+    routeUser(fallbackProfile);
+    return;
+  }
 
   if (profileErr || !profile) {
     console.error('Session profile restore failed:', {
@@ -2360,9 +2389,9 @@ async function renderDashboardV2() {
     ? `<div class="alert warning show" style="margin:0 0 16px">
         ${cautionContracts.map(contract => isCustomer
           ? `<strong>${escapeHtml(contract.name)}</strong><br>
-             Caution: ${formatCurrency(contract.used)}h of Hours Used<br>
+             Caution: ${contract.pct.toFixed(1)}% of Hours Used<br>
              ${contract.pct >= 100 ? 'You have used all of your contract hours.' : 'You are approaching your contracted hour limit. Please plan accordingly.'}`
-          : `<strong>${escapeHtml(contract.name)}:</strong> ${formatCurrency(contract.used)}h of Hours Used. Update the customer to renewal his contract.`
+          : `<strong>${escapeHtml(contract.name)}:</strong> ${contract.pct.toFixed(1)}% of Hours Used. Update the customer plan for contract renewal.`
         ).join('<br><br>')}
       </div>`
     : '';
@@ -2484,9 +2513,9 @@ async function renderContractDashboard(contractId) {
     ? `<div class="alert warning show" style="margin:0 0 16px">
         ${isCustomer
           ? `<strong>${escapeHtml(contract.contract_name || 'Contract')}</strong><br>
-             Caution: ${formatCurrency(usedHours)}h of Hours Used<br>
+             Caution: ${rawUsagePercent.toFixed(1)}% of Hours Used<br>
              ${rawUsagePercent >= 100 ? 'You have used all of your contract hours.' : 'You are approaching your contracted hour limit. Please plan accordingly.'}`
-          : `<strong>${escapeHtml(contract.contract_name || 'Contract')}:</strong> ${formatCurrency(usedHours)}h of Hours Used. Update the customer to renewal his contract.`
+          : `<strong>${escapeHtml(contract.contract_name || 'Contract')}:</strong> ${rawUsagePercent.toFixed(1)}% of Hours Used. Update the customer plan for contract renewal.`
         }
       </div>`
     : '';
@@ -3053,7 +3082,7 @@ async function renderContracts() {
 
   if (sortedContracts.length > 0) {
     html += sortedContracts.map(c => `
-      <tr>
+      <tr class="clickable-row" onclick="renderContractDashboard('${c.id}')">
         <td><strong>${c.contract_name || '?'}</strong></td>
         <td><strong>${c.arc_customers?.company_name || '?'}</strong></td>
         <td>${formatDate(c.start_date)}</td>
@@ -3063,8 +3092,8 @@ async function renderContracts() {
         <td>${formatCurrency(Math.max((c.total_hours || 0) - (c.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0), 0))}</td>
         <td>${c.arc_projects?.length || 0}</td>
         <td>
-          <button class="btn btn-sm btn-secondary table-action-btn" onclick="openProjectsModal('${c.id}')">Projects</button>
-          <button class="btn btn-sm btn-danger table-action-btn" onclick="deleteContract('${c.id}')">Delete</button>
+          <button class="btn btn-sm btn-secondary table-action-btn" onclick="event.stopPropagation(); openProjectsModal('${c.id}')">Projects</button>
+          <button class="btn btn-sm btn-danger table-action-btn" onclick="event.stopPropagation(); deleteContract('${c.id}')">Delete</button>
         </td>
       </tr>
     `).join('');
@@ -3514,7 +3543,8 @@ async function renderProjects() {
           <tr>
             <td><strong>${project.project_name}</strong></td>
             <td>${customerName}</td>
-            <td>${contractName}</td>
+            <td><button type="button" class="text-preview-btn" onclick="renderContractDashboard('${project.contract_id}')">${escapeHtml(contractName)}</button></td>
+            <td>${renderExpandableText(project.project_description || project.notes, 'Project Description', 120)}</td>
             <td>${formatDate(project.start_date)}</td>
             <td>${formatDate(project.estimated_end_date)}</td>
             <td>${formatDate(project.actual_end_date)}</td>
@@ -3534,7 +3564,7 @@ async function renderProjects() {
           </tr>
         `;
       }).join('')
-    : '<tr><td colspan="10" style="text-align:center;padding:28px">No projects found.</td></tr>';
+        : '<tr><td colspan="11" style="text-align:center;padding:28px">No projects found.</td></tr>';
 
   main.innerHTML = `
     <div class="panel-header">
@@ -3589,7 +3619,7 @@ async function renderProjects() {
     </div>
     <div class="table-wrapper">
       <table class="data-table">
-        <thead><tr><th>Project</th><th>Customer</th><th>Contract</th><th>Start Date</th><th>Estimated End</th><th>Actual End</th><th>Estimated Hours</th><th>Actual Hours</th><th>Status</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Project</th><th>Customer</th><th>Contract</th><th class="detail-col">Description</th><th>Start Date</th><th>Estimated End</th><th>Actual End</th><th>Estimated Hours</th><th>Actual Hours</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -3616,6 +3646,7 @@ async function openProjectsModal(contractId) {
   const rows = projects.filter(project => project.contract_id === contractId).map(project => `
     <tr>
       <td><strong>${project.project_name}</strong></td>
+      <td>${renderExpandableText(project.project_description || project.notes, 'Project Description', 120)}</td>
       <td>${formatDate(project.start_date)}</td>
       <td>${formatDate(project.estimated_end_date)}</td>
       <td>${formatCurrency(loggedHoursByProject[project.id] || 0)}</td>
@@ -3628,7 +3659,7 @@ async function openProjectsModal(contractId) {
       </td>
       <td><button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}', '${contractId}')">Delete</button></td>
     </tr>
-  `).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px">No projects yet.</td></tr>';
+  `).join('') || '<tr><td colspan="7" style="text-align:center;padding:24px">No projects yet.</td></tr>';
 
   const modal = document.getElementById('modalContent');
   modal.innerHTML = `
@@ -3641,7 +3672,7 @@ async function openProjectsModal(contractId) {
     </div>
     <div class="table-wrapper">
       <table class="data-table">
-        <thead><tr><th>Project</th><th>Start Date</th><th>Estimated End</th><th>Actual Hours</th><th>Status</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Project</th><th class="detail-col">Description</th><th>Start Date</th><th>Estimated End</th><th>Actual Hours</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -3919,7 +3950,7 @@ async function renderMyContract() {
       const usedHours = contract.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
       const remainingHours = Math.max((contract.total_hours || 0) - usedHours, 0);
       return `
-        <tr>
+        <tr class="clickable-row" onclick="renderContractDashboard('${contract.id}')">
           <td><strong>${contract.contract_name || '-'}</strong></td>
           <td>${formatDate(contract.start_date)}</td>
           <td>${formatDate(contract.end_date)}</td>
@@ -3997,16 +4028,16 @@ async function renderMyHours() {
       html += `<div class="alert warning show"><strong>âš ï¸ High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
     }
 
-    html += '<div class="panel-title" style="margin-top:24px">Time Log History</div><div class="table-wrapper"><table class="data-table"><thead><tr><th>Date</th><th>Project</th><th>Description</th><th>Hours</th><th>Comments</th></tr></thead><tbody>';
+    html += '<div class="panel-title" style="margin-top:24px">Time Log History</div><div class="table-wrapper"><table class="data-table time-log-table"><thead><tr><th>Date</th><th>Project</th><th class="detail-col">Description</th><th>Hours</th><th class="detail-col">Comments</th></tr></thead><tbody>';
 
     if (logs && logs.length > 0) {
       html += logs.map(log => `
         <tr>
           <td>${formatDate(log.work_date)}</td>
           <td><strong>${log.arc_projects?.project_name || 'â€”'}</strong></td>
-          <td>${log.task_name || 'â€”'}</td>
+          <td>${renderExpandableText(log.description || log.task_name, 'Description', 120)}</td>
           <td><strong>${formatCurrency(log.hours)}</strong></td>
-          <td>${log.comments || log.description || 'â€”'}</td>
+          <td>${renderExpandableText(log.comments, 'Comments', 120)}</td>
         </tr>
       `).join('');
     } else {
@@ -4065,7 +4096,7 @@ async function generateReport() {
 
   loading(true, 'Generating reportâ€¦');
 
-  let query = sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(total_hours, arc_customers(company_name))');
+  let query = sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(id, contract_name, total_hours, arc_customers(company_name))');
 
   if (custId) {
     query = query.eq('contract_id', custId);
@@ -4081,7 +4112,7 @@ async function generateReport() {
 
   loading(false);
 
-  let html = '<div class="table-wrapper"><table class="data-table"><thead><tr><th>Customer</th><th>Date</th><th>Project</th><th>Description</th><th>Hours</th></tr></thead><tbody>';
+  let html = '<div class="table-wrapper"><table class="data-table time-log-table"><thead><tr><th>Customer</th><th>Contract</th><th>Date</th><th>Project</th><th class="detail-col">Description</th><th>Hours</th><th class="detail-col">Comments</th></tr></thead><tbody>';
 
   if (logs && logs.length > 0) {
     const groupedByCustomer = {};
@@ -4095,16 +4126,24 @@ async function generateReport() {
 
     for (const [custName, custLogs] of Object.entries(groupedByCustomer)) {
       const totalCustHours = custLogs.reduce((sum, log) => sum + log.hours, 0);
-      html += `<tr style="background:#f8f8f8;font-weight:700"><td>${custName}</td><td colspan="3"></td><td>${formatCurrency(totalCustHours)}</td></tr>`;
+      html += `<tr style="background:#f8f8f8;font-weight:700"><td>${custName}</td><td colspan="4"></td><td>${formatCurrency(totalCustHours)}</td><td></td></tr>`;
       custLogs.forEach(log => {
-        html += `<tr><td></td><td>${formatDate(log.work_date)}</td><td>${log.arc_projects?.project_name || 'â€”'}</td><td>${log.task_name || 'â€”'}</td><td>${formatCurrency(log.hours)}</td></tr>`;
+        html += `<tr>
+          <td></td>
+          <td><button type="button" class="text-preview-btn" onclick="renderContractDashboard('${log.arc_contracts?.id}')">${escapeHtml(log.arc_contracts?.contract_name || 'Contract')}</button></td>
+          <td>${formatDate(log.work_date)}</td>
+          <td>${log.arc_projects?.project_name || '-'}</td>
+          <td>${renderExpandableText(log.description || log.task_name, 'Description', 120)}</td>
+          <td>${formatCurrency(log.hours)}</td>
+          <td>${renderExpandableText(log.comments, 'Comments', 120)}</td>
+        </tr>`;
       });
     }
 
     const totalHours = logs.reduce((sum, log) => sum + log.hours, 0);
-    html += `<tr style="background:#e8e8e8;font-weight:700"><td colspan="4">TOTAL</td><td>${formatCurrency(totalHours)}</td></tr>`;
+    html += `<tr style="background:#e8e8e8;font-weight:700"><td colspan="5">TOTAL</td><td>${formatCurrency(totalHours)}</td><td></td></tr>`;
   } else {
-    html += '<tr><td colspan="5" style="text-align:center;padding:20px">No results found.</td></tr>';
+    html += '<tr><td colspan="7" style="text-align:center;padding:20px">No results found.</td></tr>';
   }
 
   html += '</tbody></table></div>';
