@@ -1929,7 +1929,7 @@ async function doLogin(e) {
     // Fetch profile
     const { data: profile, error: profileErr } = await sb
       .from('arc_profiles')
-      .select('*, arc_projects(project_name)')
+      .select('*')
       .eq('id', data.user.id)
       .single();
 
