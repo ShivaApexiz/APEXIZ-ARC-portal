@@ -581,6 +581,24 @@ body {
   cursor: not-allowed;
 }
 
+.text-link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  padding: 0;
+  text-decoration: underline;
+  text-transform: none;
+}
+
+.text-link-btn:hover {
+  color: var(--primary-dark);
+}
+
 .auth-msg {
   margin-top: 12px;
   padding: 10px 12px;
@@ -1653,7 +1671,9 @@ body {
           <input type="password" id="loginPassword" class="form-input" placeholder="Password" required>
         </div>
         <button type="submit" class="btn-primary">Sign In</button>
-        <button type="button" class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="requestPasswordReset()">Forgot Password</button>
+        <div style="text-align:center;margin-top:12px">
+          <a href="#" class="text-link-btn" onclick="event.preventDefault(); requestPasswordReset()">Forgot Password</a>
+        </div>
         <div id="loginMsg" class="auth-msg"></div>
       </form>
       <form id="passwordSetupForm" onsubmit="completePasswordSetup(event)" style="display:none">
@@ -1912,6 +1932,12 @@ function formatCurrency(num) {
 function formatDate(date) {
   if (!date) return '-';
   return new Date(date).toLocaleDateString('en-GB');
+}
+
+function formatStatusLabel(status) {
+  const value = (status || 'active').toLowerCase();
+  if (value === 'paused') return 'On Hold';
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function escapeHtml(value) {
@@ -2356,7 +2382,6 @@ async function renderDashboardV2() {
   const customers = customersRes.data || [];
   const projects = projectsRes.data || [];
   const logs = logsRes.data || [];
-  const profileNames = await getArcProfileNameMap(logs.map(log => log.logged_by));
   const safeLogs = logs.slice(0, 5);
   const usedHours = logs.reduce((sum, log) => sum + (log.hours || 0), 0);
 
@@ -2420,10 +2445,9 @@ async function renderDashboardV2() {
         ${isCustomer ? '' : `<td>${log.arc_contracts?.arc_customers?.company_name || '-'}</td>`}
         <td>${log.arc_projects?.project_name || '-'}</td>
         <td>${formatCurrency(log.hours)}h</td>
-        <td>${profileNames[log.logged_by] || 'Admin'}</td>
       </tr>
     `).join('')
-    : `<tr><td colspan="${isCustomer ? 4 : 5}" style="text-align:center;padding:28px">No time logs yet.</td></tr>`;
+    : `<tr><td colspan="${isCustomer ? 3 : 4}" style="text-align:center;padding:28px">No time logs yet.</td></tr>`;
 
   const contractRows = contracts.length
     ? contracts.slice(0, 6).map(contract => {
@@ -2505,7 +2529,7 @@ async function renderDashboardV2() {
       <div class="dashboard-section-header">Recent Time Logs</div>
       <div class="table-section-body">
         <table class="data-table">
-          <thead><tr><th>Date</th>${isCustomer ? '' : '<th>Customer</th>'}<th>Project</th><th>Logged Hours</th><th>Logged By</th></tr></thead>
+          <thead><tr><th>Date</th>${isCustomer ? '' : '<th>Customer</th>'}<th>Project</th><th>Logged Hours</th></tr></thead>
           <tbody>${recentRows}</tbody>
         </table>
       </div>
@@ -2602,7 +2626,7 @@ async function renderContractDashboard(contractId) {
         <td>${formatDate(project.estimated_end_date)}</td>
         <td>${formatCurrency(project.estimated_hours)}h</td>
         <td>${formatCurrency(project.hours)}h</td>
-        <td><span class="badge ${(project.status || 'active').toLowerCase()}">${escapeHtml(project.status || 'Active')}</span></td>
+        <td><span class="badge ${(project.status || 'active').toLowerCase()}">${escapeHtml(formatStatusLabel(project.status))}</span></td>
       </tr>
     `).join('')
     : '<tr><td colspan="6" style="text-align:center;padding:28px">No projects found for this contract.</td></tr>';
@@ -3269,7 +3293,7 @@ async function openProjectsModal(contractId) {
     ? projects.map(project => `
       <tr>
         <td><strong>${project.project_name}</strong></td>
-        <td>${project.status || 'active'}</td>
+        <td>${formatStatusLabel(project.status)}</td>
         <td>${formatCurrency(project.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0)}</td>
         <td>${project.notes || '-'}</td>
         <td><button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}', '${contractId}')">Delete</button></td>
@@ -3294,7 +3318,7 @@ async function openProjectsModal(contractId) {
           <select id="projectStatus" class="form-select">
             <option value="active">Active</option>
             <option value="completed">Completed</option>
-            <option value="paused">Paused</option>
+            <option value="paused">On Hold</option>
           </select>
         </div>
       </div>
@@ -3620,7 +3644,7 @@ async function renderProjects() {
             <td>
               <select class="compact-select" onchange="toggleProjectStatus('${project.id}', this.value)">
                 <option value="active" ${(project.status || 'active') === 'active' ? 'selected' : ''}>Active</option>
-                <option value="paused" ${project.status === 'paused' ? 'selected' : ''}>Paused</option>
+                <option value="paused" ${project.status === 'paused' ? 'selected' : ''}>On Hold</option>
                 <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>Completed</option>
               </select>
             </td>
@@ -3664,7 +3688,7 @@ async function renderProjects() {
             <select id="projectFilterStatus" class="form-select" onchange="applyProjectFilters()">
               <option value="">Status: All</option>
               <option value="active" ${filters.status === 'active' ? 'selected' : ''}>Active</option>
-              <option value="paused" ${filters.status === 'paused' ? 'selected' : ''}>Paused</option>
+              <option value="paused" ${filters.status === 'paused' ? 'selected' : ''}>On Hold</option>
               <option value="completed" ${filters.status === 'completed' ? 'selected' : ''}>Completed</option>
             </select>
           </div>
@@ -3720,7 +3744,7 @@ async function openProjectsModal(contractId) {
       <td>
         <select class="compact-select" onchange="toggleProjectStatus('${project.id}', this.value)">
           <option value="active" ${(project.status || 'active') === 'active' ? 'selected' : ''}>Active</option>
-          <option value="paused" ${project.status === 'paused' ? 'selected' : ''}>Paused</option>
+          <option value="paused" ${project.status === 'paused' ? 'selected' : ''}>On Hold</option>
           <option value="completed" ${project.status === 'completed' ? 'selected' : ''}>Completed</option>
         </select>
       </td>
@@ -3839,11 +3863,7 @@ async function renderTimeLogs() {
     return;
   }
 
-  const profileNames = await getArcProfileNameMap((logs || []).map(log => log.logged_by));
-  const normalizedLogs = (logs || []).map(log => ({
-    ...log,
-    arc_profiles: { name: profileNames[log.logged_by] || log.arc_profiles?.name || '-' }
-  }));
+  const normalizedLogs = logs || [];
 
   let html = `
     <div class="panel-title">Time Logs</div>
@@ -4175,7 +4195,7 @@ async function getProjectReportRows(contractId = '', start = '', end = '') {
   const isCustomer = STATE.profile.role === 'customer';
   let contractsQuery = sb
     .from('arc_contracts')
-    .select('id, contract_name, customer_id')
+    .select('id, contract_name, customer_id, start_date, end_date, total_hours')
     .order('start_date', { ascending: false });
 
   if (contractId) contractsQuery = contractsQuery.eq('id', contractId);
@@ -4184,8 +4204,10 @@ async function getProjectReportRows(contractId = '', start = '', end = '') {
   const contractsRes = await contractsQuery;
   if (contractsRes.error) return { error: contractsRes.error };
 
-  const contractIds = (contractsRes.data || []).map(contract => contract.id);
+  const contracts = contractsRes.data || [];
+  const contractIds = contracts.map(contract => contract.id);
   if (!contractIds.length) return { rows: [] };
+  const contractMap = Object.fromEntries(contracts.map(contract => [contract.id, contract]));
 
   let projectQuery = sb
     .from('arc_projects')
@@ -4223,6 +4245,11 @@ async function getProjectReportRows(contractId = '', start = '', end = '') {
     })[0];
 
     return {
+      contractId: project.contract_id,
+      contractName: contractMap[project.contract_id]?.contract_name || 'Contract',
+      contractStartDate: contractMap[project.contract_id]?.start_date || '',
+      contractEndDate: contractMap[project.contract_id]?.end_date || '',
+      contractTotalHours: contractMap[project.contract_id]?.total_hours || '',
       projectTitle: project.project_name || '',
       projectDescription: project.project_description || project.notes || '',
       startDate: project.start_date || '',
@@ -4230,12 +4257,12 @@ async function getProjectReportRows(contractId = '', start = '', end = '') {
       actualEndDate: project.actual_end_date || '',
       estimatedHours: project.estimated_hours || '',
       actualHours,
-      status: project.status || 'active',
+      status: formatStatusLabel(project.status),
       comments: latestLog?.comments || latestLog?.description || latestLog?.task_name || ''
     };
   });
 
-  return { rows };
+  return { rows, contracts };
 }
 
 async function generateReport() {
@@ -4373,10 +4400,33 @@ async function exportReportToExcel() {
 
   const wb = XLSX.utils.book_new();
   const headers = ['Project Title', 'Project description', 'Start date', 'Est. End Date', 'Act. End Date', 'Est. Hours', 'Act. Hours', 'Apexiz Status', 'Comments'];
-  const aoa = [
-    ['APEXIZ ARC Project Report', '', '', '', '', '', '', '', ''],
-    headers,
-    ...(rows || []).map(row => [
+
+  const groupedRows = (rows || []).reduce((acc, row) => {
+    const key = row.contractId || 'unassigned';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(row);
+    return acc;
+  }, {});
+
+  const contractGroups = Object.entries(groupedRows);
+  if (!contractGroups.length) {
+    contractGroups.push(['report', []]);
+  }
+  const usedSheetNames = new Set();
+
+  contractGroups.forEach(([contractId, groupRows], index) => {
+    const contract = groupRows[0] || { contractName: 'Report' };
+    const totalEstimated = groupRows.reduce((sum, row) => sum + (parseFloat(row.estimatedHours) || 0), 0);
+    const totalActual = groupRows.reduce((sum, row) => sum + (parseFloat(row.actualHours) || 0), 0);
+    const contractMeta = (rows || []).find(row => row.contractId === contractId) || contract;
+    const aoa = [
+      ['APEXIZ ARC Project Report', '', '', '', '', '', '', '', ''],
+      ['Contract Name', contract.contractName || 'Contract', '', '', 'Generated Date', formatDate(new Date()), '', '', ''],
+      ['Start Date', contractMeta.contractStartDate ? formatDate(contractMeta.contractStartDate) : '', 'End Date', contractMeta.contractEndDate ? formatDate(contractMeta.contractEndDate) : '', 'Contract Hours', contractMeta.contractTotalHours || '', '', '', ''],
+      ['Total Projects', groupRows.length, '', '', 'Total Est. Hours', totalEstimated || '', 'Total Act. Hours', totalActual || 0, ''],
+      [],
+      headers,
+      ...groupRows.map(row => [
       row.projectTitle,
       row.projectDescription,
       row.startDate ? formatDate(row.startDate) : '',
@@ -4386,23 +4436,33 @@ async function exportReportToExcel() {
       row.actualHours || 0,
       row.status,
       row.comments
-    ])
-  ];
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }];
-  ws['!cols'] = [
-    { wch: 30 },
-    { wch: 27 },
-    { wch: 13 },
-    { wch: 14 },
-    { wch: 13 },
-    { wch: 13 },
-    { wch: 13 },
-    { wch: 14 },
-    { wch: 42 }
-  ];
+      ])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }];
+    ws['!cols'] = [
+      { wch: 30 },
+      { wch: 27 },
+      { wch: 13 },
+      { wch: 14 },
+      { wch: 13 },
+      { wch: 13 },
+      { wch: 13 },
+      { wch: 14 },
+      { wch: 42 }
+    ];
+    let baseName = (contract.contractName || `Contract ${index + 1}`).replace(/[\\/?*[\]:]/g, '').slice(0, 28) || `Contract ${index + 1}`;
+    let sheetName = baseName;
+    let suffix = 2;
+    while (usedSheetNames.has(sheetName)) {
+      sheetName = `${baseName.slice(0, 25)} ${suffix}`;
+      suffix += 1;
+    }
+    usedSheetNames.add(sheetName);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
   try {
-    XLSX.utils.book_append_sheet(wb, ws, new Date().toISOString().split('T')[0]);
     XLSX.writeFile(wb, 'arc-hours-report-' + new Date().toISOString().split('T')[0] + '.xlsx');
   } catch (error) {
     alert('Unable to generate Excel report: ' + error.message);
