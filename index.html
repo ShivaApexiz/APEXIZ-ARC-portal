@@ -4386,9 +4386,6 @@ async function renderMyHours() {
 
     html += '</tbody></table></div>';
 
-    if (logs && logs.length > 0) {
-      html += `<button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>`;
-    }
   }
 
   document.getElementById('mainContent').innerHTML = html;
