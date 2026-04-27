@@ -1185,6 +1185,12 @@ body {
 .badge.inactive { background: var(--neutral-100); color: var(--neutral-700); }
 .badge.critical { background: #FEE; color: var(--critical); }
 
+.negative-hours,
+.renewal-critical {
+  color: var(--critical) !important;
+  font-weight: 800;
+}
+
 /* â”€â”€ BUTTONS â”€â”€ */
 .btn {
   padding: 8px 14px;
@@ -1979,6 +1985,12 @@ function formatCurrency(num) {
   return (num || 0).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
+function renderHoursValue(hours, suffix = 'h') {
+  const value = Number(hours) || 0;
+  const className = value < 0 ? ' class="negative-hours"' : '';
+  return `<span${className}>${formatCurrency(value)}${suffix}</span>`;
+}
+
 function formatDate(date) {
   if (!date) return '-';
   return new Date(date).toLocaleDateString('en-GB');
@@ -2532,7 +2544,7 @@ async function renderDashboardV2() {
           ? `<strong>${escapeHtml(contract.name)}</strong><br>
              Caution: ${contract.pct.toFixed(1)}% of Hours Used<br>
              ${contract.pct >= 100 ? 'You have used all of your contract hours.' : 'You are approaching your contracted hour limit. Please plan accordingly.'}`
-          : `<strong>${escapeHtml(contract.name)}:</strong> ${contract.pct.toFixed(1)}% of Hours Used. Update the customer plan for contract renewal.`
+          : `<span class="${contract.pct >= 100 ? 'renewal-critical' : ''}"><strong>${escapeHtml(contract.name)}:</strong> ${contract.pct.toFixed(1)}% of Hours Used. Update the customer plan for contract renewal.</span>`
         ).join('<br><br>')}
       </div>`
     : '';
@@ -2647,7 +2659,7 @@ async function renderContractDashboard(contractId) {
   }, {});
   const usedHours = logs.reduce((sum, log) => sum + (log.hours || 0), 0);
   const totalHours = contract.total_hours || 0;
-  const remainingHours = Math.max(totalHours - usedHours, 0);
+  const remainingHours = totalHours - usedHours;
   const usagePercent = totalHours ? Math.min((usedHours / totalHours) * 100, 100) : 0;
   const rawUsagePercent = totalHours ? (usedHours / totalHours) * 100 : 0;
   const usageCautionNotice = rawUsagePercent >= 75
@@ -2656,7 +2668,7 @@ async function renderContractDashboard(contractId) {
           ? `<strong>${escapeHtml(contract.contract_name || 'Contract')}</strong><br>
              Caution: ${rawUsagePercent.toFixed(1)}% of Hours Used<br>
              ${rawUsagePercent >= 100 ? 'You have used all of your contract hours.' : 'You are approaching your contracted hour limit. Please plan accordingly.'}`
-          : `<strong>${escapeHtml(contract.contract_name || 'Contract')}:</strong> ${rawUsagePercent.toFixed(1)}% of Hours Used. Update the customer plan for contract renewal.`
+          : `<span class="${rawUsagePercent >= 100 ? 'renewal-critical' : ''}"><strong>${escapeHtml(contract.contract_name || 'Contract')}:</strong> ${rawUsagePercent.toFixed(1)}% of Hours Used. Update the customer plan for contract renewal.</span>`
         }
       </div>`
     : '';
@@ -2721,7 +2733,7 @@ async function renderContractDashboard(contractId) {
       </div>
       <div class="card">
         <div class="card-label">Remaining Hours</div>
-        <div class="card-value">${formatCurrency(remainingHours)}h</div>
+        <div class="card-value">${renderHoursValue(remainingHours)}</div>
         <div class="card-sub">${projects.length} projects</div>
       </div>
     </div>
@@ -2811,7 +2823,7 @@ async function renderDashboard() {
           </div>
           <div class="card ${status}">
             <div class="card-label">Remaining</div>
-            <div class="card-value">${formatCurrency(remaining)}</div>
+            <div class="card-value">${renderHoursValue(remaining, '')}</div>
             <div class="progress-container">
               <div class="progress-bar">
                 <div class="progress-fill ${status}" style="width: ${Math.min(pctUsed, 100)}%"></div>
@@ -2949,6 +2961,7 @@ async function renderCustomers() {
         <td>${[c.contact_mobile_country_code, c.contact_mobile].filter(Boolean).join(' ') || '-'}</td>
         <td><span class="badge ${status}">${status.toUpperCase()}</span></td>
         <td>
+          <button class="btn btn-sm btn-secondary table-action-btn" onclick="openCustomerModal('${c.id}')">Edit</button>
           <button class="btn btn-sm btn-secondary table-action-btn" onclick="toggleCustomerStatus('${c.id}', '${status}')">${nextStatus === 'active' ? 'Activate' : 'Deactivate'}</button>
           <button class="btn btn-sm btn-danger table-action-btn" onclick="deleteCustomer('${c.id}')">Delete</button>
         </td>
@@ -2963,52 +2976,65 @@ async function renderCustomers() {
   document.getElementById('mainContent').innerHTML = html;
 }
 
-async function openCustomerModal() {
+async function openCustomerModal(customerId = '') {
+  let customer = {};
+  if (customerId) {
+    loading(true, 'Loading customer...');
+    const { data, error } = await sb.from('arc_customers').select('*').eq('id', customerId).single();
+    loading(false);
+    if (error || !data) {
+      alert('Unable to load customer: ' + (error?.message || 'Customer not found'));
+      return;
+    }
+    customer = data;
+  }
+
   const modal = document.getElementById('modalContent');
   modal.innerHTML = `
     <div class="modal-title">
-      <span>New Customer</span>
+      <span>${customerId ? 'Edit Customer' : 'New Customer'}</span>
       <button class="modal-close" onclick="closeModal()">x</button>
     </div>
     <div class="form-card">
       <div class="form-group">
         <label class="form-label">Company Name</label>
-        <input type="text" id="custName" class="form-input" placeholder="Customer company name">
+        <input type="text" id="custName" class="form-input" placeholder="Customer company name" value="${escapeHtml(customer.company_name || '')}">
       </div>
       <div class="form-group">
         <label class="form-label">Country</label>
         <select id="custCountry" class="form-select" onchange="updateMobileCountryCode()">
-          ${renderCountryOptions()}
+          ${renderCountryOptions(customer.country || '')}
         </select>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Contact Person</label>
-          <input type="text" id="custPerson" class="form-input" placeholder="John Smith">
+          <input type="text" id="custPerson" class="form-input" placeholder="John Smith" value="${escapeHtml(customer.contact_person || '')}">
         </div>
         <div class="form-group">
           <label class="form-label">Email</label>
-          <input type="email" id="custEmail" class="form-input" placeholder="contact@customer.com">
+          <input type="email" id="custEmail" class="form-input" placeholder="contact@customer.com" value="${escapeHtml(customer.email || '')}">
         </div>
       </div>
       <div class="phone-row">
         <div class="form-group">
           <label class="form-label">Code</label>
-          <input type="tel" id="custMobileCode" class="form-input" placeholder="+91">
+          <input type="tel" id="custMobileCode" class="form-input" placeholder="+91" value="${escapeHtml(customer.contact_mobile_country_code || '')}">
         </div>
         <div class="form-group">
           <label class="form-label">Mobile Number</label>
-          <input type="tel" id="custMobile" class="form-input" placeholder="9876543210">
+          <input type="tel" id="custMobile" class="form-input" placeholder="9876543210" value="${escapeHtml(customer.contact_mobile || '')}">
         </div>
       </div>
-      <button class="btn btn-primary" onclick="saveCustomer()">Register Customer</button>
+      <button class="btn btn-primary" onclick="saveCustomer('${customerId}')">${customerId ? 'Update Customer' : 'Register Customer'}</button>
       <div id="customerMsg" class="auth-msg"></div>
     </div>
   `;
   document.getElementById('modalOverlay').classList.add('open');
+  if (!customerId) updateMobileCountryCode();
 }
 
-async function saveCustomer() {
+async function saveCustomer(customerId = '') {
   const name = document.getElementById('custName').value.trim();
   const country = document.getElementById('custCountry').value.trim();
   const person = document.getElementById('custPerson').value.trim();
@@ -3018,6 +3044,31 @@ async function saveCustomer() {
 
   if (!name || !country || !person || !email || !mobileCode || !mobile) {
     showMsg('customerMsg', 'Please fill in all required fields', 'error');
+    return;
+  }
+
+  if (customerId) {
+    loading(true, 'Updating customer...');
+    const { error } = await sb.from('arc_customers').update({
+      company_name: name,
+      country,
+      contact_person: person,
+      email,
+      contact_mobile_country_code: mobileCode,
+      contact_mobile: mobile
+    }).eq('id', customerId);
+    loading(false);
+
+    if (error) {
+      showMsg('customerMsg', 'Error updating customer: ' + error.message, 'error');
+      return;
+    }
+
+    showMsg('customerMsg', 'Customer updated successfully.', 'success');
+    setTimeout(() => {
+      closeModal();
+      showPanel('customers');
+    }, 900);
     return;
   }
 
@@ -3136,7 +3187,7 @@ async function renderContracts() {
   const filteredContracts = (contracts || []).filter(contract => {
     const usedHours = contract.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
     const totalHours = contract.total_hours || 0;
-    const remainingHours = Math.max(totalHours - usedHours, 0);
+    const remainingHours = totalHours - usedHours;
     const customerMatch = !filters.customerId || contract.customer_id === filters.customerId;
     const searchMatch = !filters.search || [contract.contract_name, contract.arc_customers?.company_name].some(value => (value || '').toLowerCase().includes(filters.search));
     const activityMatch = !filters.activity
@@ -3222,22 +3273,27 @@ async function renderContracts() {
   `;
 
   if (sortedContracts.length > 0) {
-    html += sortedContracts.map(c => `
+    html += sortedContracts.map(c => {
+      const used = c.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
+      const remaining = (c.total_hours || 0) - used;
+      return `
       <tr class="clickable-row" onclick="renderContractDashboard('${c.id}')">
         <td><strong>${c.contract_name || '?'}</strong></td>
         <td><strong>${c.arc_customers?.company_name || '?'}</strong></td>
         <td>${formatDate(c.start_date)}</td>
         <td>${formatDate(c.end_date)}</td>
         <td>${formatCurrency(c.total_hours)}</td>
-        <td>${formatCurrency(c.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0)}</td>
-        <td>${formatCurrency(Math.max((c.total_hours || 0) - (c.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0), 0))}</td>
+        <td>${formatCurrency(used)}</td>
+        <td>${renderHoursValue(remaining, '')}</td>
         <td>${c.arc_projects?.length || 0}</td>
         <td>
+          <button class="btn btn-sm btn-secondary table-action-btn" onclick="event.stopPropagation(); openContractModal('${c.id}')">Edit</button>
           <button class="btn btn-sm btn-secondary table-action-btn" onclick="event.stopPropagation(); openProjectsModal('${c.id}')">Projects</button>
           <button class="btn btn-sm btn-danger table-action-btn" onclick="event.stopPropagation(); deleteContract('${c.id}')">Delete</button>
         </td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
   } else {
     html += '<tr><td colspan="9" style="text-align:center;padding:40px">No contracts found.</td></tr>';
   }
@@ -3246,24 +3302,36 @@ async function renderContracts() {
   document.getElementById('mainContent').innerHTML = html;
 }
 
-async function openContractModal() {
+async function openContractModal(contractId = '') {
+  let contract = {};
+  if (contractId) {
+    loading(true, 'Loading contract...');
+    const { data, error } = await sb.from('arc_contracts').select('*').eq('id', contractId).single();
+    loading(false);
+    if (error || !data) {
+      alert('Unable to load contract: ' + (error?.message || 'Contract not found'));
+      return;
+    }
+    contract = data;
+  }
+
   const { data: customers } = await sb.from('arc_customers').select('id, company_name');
 
   let custOptions = '<option value="">Select Customer</option>';
   customers?.forEach(c => {
-    custOptions += `<option value="${c.id}">${c.company_name}</option>`;
+    custOptions += `<option value="${c.id}" ${contract.customer_id === c.id ? 'selected' : ''}>${c.company_name}</option>`;
   });
 
   const modal = document.getElementById('modalContent');
   modal.innerHTML = `
     <div class="modal-title">
-      <span>New Contract</span>
+      <span>${contractId ? 'Edit Contract' : 'New Contract'}</span>
       <button class="modal-close" onclick="closeModal()">x</button>
     </div>
     <div class="form-card">
       <div class="form-group">
         <label class="form-label">Contract Name</label>
-        <input type="text" id="contractName" class="form-input" placeholder="Annual Resource Contract 2026">
+        <input type="text" id="contractName" class="form-input" placeholder="Annual Resource Contract 2026" value="${escapeHtml(contract.contract_name || '')}">
       </div>
       <div class="form-group">
         <label class="form-label">Customer</label>
@@ -3272,28 +3340,28 @@ async function openContractModal() {
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Start Date</label>
-          <input type="date" id="contractStart" class="form-input">
+          <input type="date" id="contractStart" class="form-input" value="${contract.start_date || ''}">
         </div>
         <div class="form-group">
           <label class="form-label">End Date</label>
-          <input type="date" id="contractEnd" class="form-input">
+          <input type="date" id="contractEnd" class="form-input" value="${contract.end_date || ''}">
         </div>
       </div>
       <div class="form-group">
         <label class="form-label">Total Annual Hours</label>
-        <input type="number" id="contractHours" class="form-input" placeholder="160" min="0" step="0.5">
+        <input type="number" id="contractHours" class="form-input" placeholder="160" min="0" step="0.5" value="${contract.total_hours || ''}">
       </div>
       <div class="form-group">
         <label class="form-label">Notes</label>
-        <textarea id="contractNotes" class="form-textarea" placeholder="Optional notes"></textarea>
+        <textarea id="contractNotes" class="form-textarea" placeholder="Optional notes">${escapeHtml(contract.notes || '')}</textarea>
       </div>
-      <button class="btn btn-primary" onclick="saveContract()">Create Contract</button>
+      <button class="btn btn-primary" onclick="saveContract('${contractId}')">${contractId ? 'Update Contract' : 'Create Contract'}</button>
     </div>
   `;
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-async function saveContract() {
+async function saveContract(contractId = '') {
   const contractName = document.getElementById('contractName').value.trim();
   const custId = document.getElementById('contractCust').value;
   const start = document.getElementById('contractStart').value;
@@ -3308,14 +3376,17 @@ async function saveContract() {
 
   loading(true, 'Saving...');
 
-  const { error } = await sb.from('arc_contracts').insert({
+  const payload = {
     contract_name: contractName,
     customer_id: custId,
     start_date: start,
     end_date: end,
     total_hours: hours,
     notes: notes || null
-  });
+  };
+  const { error } = contractId
+    ? await sb.from('arc_contracts').update(payload).eq('id', contractId)
+    : await sb.from('arc_contracts').insert(payload);
 
   loading(false);
 
@@ -3948,6 +4019,109 @@ async function renderTimeLogs() {
   document.getElementById('mainContent').innerHTML = html;
 }
 
+async function editTimeLog(logId) {
+  const [logRes, contractsRes, projectsRes] = await Promise.all([
+    sb.from('arc_time_logs').select('*').eq('id', logId).single(),
+    sb
+      .from('arc_contracts')
+      .select('id, contract_name, customer_id, arc_customers(company_name)')
+      .order('start_date', { ascending: false }),
+    sb
+      .from('arc_projects')
+      .select('id, contract_id, project_name, status')
+      .order('created_at', { ascending: false })
+  ]);
+
+  const error = logRes.error || contractsRes.error || projectsRes.error;
+  if (error || !logRes.data) {
+    alert('Unable to load time log: ' + (error?.message || 'Time log not found'));
+    return;
+  }
+
+  const log = logRes.data;
+  const contractMap = Object.fromEntries((contractsRes.data || []).map(contract => [contract.id, contract]));
+  let projectOptions = '<option value="">Select Customer / Contract / Project</option>';
+  (projectsRes.data || []).forEach(project => {
+    if (project.status && !['active', 'paused'].includes(project.status) && project.id !== log.project_id) return;
+    const contract = contractMap[project.contract_id];
+    if (!contract) return;
+
+    const value = `${contract.id}|${project.id}`;
+    const selected = contract.id === log.contract_id && project.id === log.project_id ? 'selected' : '';
+    const contractLabel = contract.contract_name ? ` - ${contract.contract_name}` : '';
+    projectOptions += `<option value="${value}" ${selected}>${contract.arc_customers?.company_name || 'Unknown'}${contractLabel} - ${project.project_name}</option>`;
+  });
+
+  const modal = document.getElementById('modalContent');
+  modal.innerHTML = `
+    <div class="modal-title">
+      <span>Edit Time Log</span>
+      <button class="modal-close" onclick="closeModal()">x</button>
+    </div>
+    <div class="form-card">
+      <div class="form-group">
+        <label class="form-label">Project</label>
+        <select id="editLogProjectRef" class="form-select">${projectOptions}</select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" id="editLogDate" class="form-input" value="${log.work_date || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hours</label>
+          <input type="number" id="editLogHours" class="form-input" min="0.5" step="0.5" value="${log.hours || ''}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="editLogDesc" class="form-textarea">${escapeHtml(log.description || log.task_name || '')}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Comments</label>
+        <textarea id="editLogComments" class="form-textarea">${escapeHtml(log.comments || '')}</textarea>
+      </div>
+      <button class="btn btn-primary" onclick="updateTimeLog('${logId}')">Update Time Log</button>
+      <div id="editLogMsg" class="auth-msg"></div>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+async function updateTimeLog(logId) {
+  const projectRef = document.getElementById('editLogProjectRef').value;
+  const [contractId, projectId] = projectRef.split('|');
+  const date = document.getElementById('editLogDate').value;
+  const hours = parseFloat(document.getElementById('editLogHours').value);
+  const desc = document.getElementById('editLogDesc').value.trim();
+  const comments = document.getElementById('editLogComments').value.trim();
+
+  if (!contractId || !projectId || !desc || !date || !hours) {
+    showMsg('editLogMsg', 'Please fill in all required fields', 'error');
+    return;
+  }
+
+  loading(true, 'Updating time log...');
+  const { error } = await sb.from('arc_time_logs').update({
+    contract_id: contractId,
+    project_id: projectId,
+    task_name: desc,
+    work_date: date,
+    hours,
+    description: desc || null,
+    comments: comments || null
+  }).eq('id', logId);
+  loading(false);
+
+  if (error) {
+    showMsg('editLogMsg', 'Error updating time log: ' + error.message, 'error');
+    return;
+  }
+
+  closeModal();
+  showPanel('timelogs');
+}
+
 async function deleteTimeLog(id) {
   if (!confirm('Delete this time log entry?')) return;
 
@@ -4085,7 +4259,7 @@ async function renderMyContract() {
   } else {
     const rows = contracts.map(contract => {
       const usedHours = contract.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
-      const remainingHours = Math.max((contract.total_hours || 0) - usedHours, 0);
+      const remainingHours = (contract.total_hours || 0) - usedHours;
       return `
         <tr class="clickable-row" onclick="renderContractDashboard('${contract.id}')">
           <td><strong>${contract.contract_name || '-'}</strong></td>
@@ -4094,7 +4268,7 @@ async function renderMyContract() {
           <td>${contract.arc_projects?.length || 0}</td>
           <td>${formatCurrency(contract.total_hours || 0)}h</td>
           <td>${formatCurrency(usedHours)}h</td>
-          <td>${formatCurrency(remainingHours)}h</td>
+          <td>${renderHoursValue(remainingHours)}</td>
         </tr>
       `;
     }).join('');
@@ -4134,7 +4308,7 @@ async function renderMyHours() {
       .order('work_date', { ascending: false });
 
     const hoursUsed = logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
-    const remaining = c.total_hours - hoursUsed;
+    const remaining = (c.total_hours || 0) - hoursUsed;
     const pctUsed = (hoursUsed / c.total_hours) * 100;
     const status = getUsageStatus(hoursUsed, c.total_hours);
 
@@ -4150,7 +4324,7 @@ async function renderMyHours() {
         </div>
         <div class="card ${status}">
           <div class="card-label">Remaining</div>
-          <div class="card-value">${formatCurrency(remaining)}</div>
+          <div class="card-value">${renderHoursValue(remaining, '')}</div>
           <div class="progress-container">
             <div class="progress-bar">
               <div class="progress-fill ${status}" style="width: ${Math.min(pctUsed, 100)}%"></div>
@@ -4245,7 +4419,7 @@ async function getProjectReportRows(contractId = '', start = '', end = '') {
   const isCustomer = STATE.profile.role === 'customer';
   let contractsQuery = sb
     .from('arc_contracts')
-    .select('id, contract_name, customer_id, start_date, end_date, total_hours')
+    .select('id, contract_name, customer_id, start_date, end_date, total_hours, arc_customers(company_name)')
     .order('start_date', { ascending: false });
 
   if (contractId) contractsQuery = contractsQuery.eq('id', contractId);
@@ -4300,6 +4474,7 @@ async function getProjectReportRows(contractId = '', start = '', end = '') {
       contractStartDate: contractMap[project.contract_id]?.start_date || '',
       contractEndDate: contractMap[project.contract_id]?.end_date || '',
       contractTotalHours: contractMap[project.contract_id]?.total_hours || '',
+      customerName: contractMap[project.contract_id]?.arc_customers?.company_name || '',
       projectTitle: project.project_name || '',
       projectDescription: project.project_description || project.notes || '',
       startDate: project.start_date || '',
@@ -4547,9 +4722,10 @@ async function exportReportToExcel() {
     const totalHoursSpent = groupRows.reduce((sum, row) => sum + (parseFloat(row.actualHours) || 0), 0);
     const contractMeta = (rows || []).find(row => row.contractId === contractId) || contract;
     const contractHours = parseFloat(contractMeta.contractTotalHours) || 0;
-    const remainingHours = Math.max(contractHours - totalHoursSpent, 0);
+    const remainingHours = contractHours - totalHoursSpent;
+    const reportTitle = `APEXIZ ${contract.customerName || 'CUSTOMER'} ${contract.projectTitle || 'PROJECT'} REPORT`.toUpperCase();
     const aoa = [
-      ['APEXIZ ARC Project Report', '', '', '', '', '', '', '', ''],
+      [reportTitle, '', '', '', '', '', '', '', ''],
       ['Contract Name', contract.contractName || 'Contract', '', '', 'Generated Date', formatDate(new Date()), '', '', ''],
       ['Start Date', contractMeta.contractStartDate ? formatDate(contractMeta.contractStartDate) : '', 'End Date', contractMeta.contractEndDate ? formatDate(contractMeta.contractEndDate) : '', 'Contract Hours', contractMeta.contractTotalHours || '', '', '', ''],
       ['Total Projects', groupRows.length, '', '', 'Total Hours Spent', totalHoursSpent || 0, 'Remaining Hours', remainingHours, ''],
@@ -4581,6 +4757,11 @@ async function exportReportToExcel() {
       { wch: 42 }
     ];
     styleProjectReportSheet(ws, groupRows.length);
+    if (remainingHours < 0) {
+      applyCellStyle(ws, 'H4', {
+        font: { name: 'Inter', sz: 11, bold: true, color: { rgb: 'D93025' } }
+      });
+    }
     let baseName = (contract.contractName || `Contract ${index + 1}`).replace(/[\\/?*[\]:]/g, '').slice(0, 28) || `Contract ${index + 1}`;
     let sheetName = baseName;
     let suffix = 2;
