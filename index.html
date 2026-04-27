@@ -46,14 +46,16 @@ body {
 /* â”€â”€ TOPBAR â”€â”€ */
 .topbar {
   background: var(--white);
-  height: 70px;
-  min-height: 70px;
+  height: 78px;
+  min-height: 78px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--neutral-200);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  padding: 0 30px;
+  border: 1px solid var(--neutral-200);
+  border-bottom: 3px solid var(--primary);
+  border-radius: 4px 4px 0 0;
+  box-shadow: none;
   flex-shrink: 0;
   z-index: 50;
 }
@@ -65,8 +67,8 @@ body {
 }
 
 .topbar-logo-container {
-  width: 64px;
-  height: 52px;
+  width: 118px;
+  height: 66px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -163,11 +165,29 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   font-size: 10px;
   letter-spacing: 1px;
   color: var(--neutral-500);
-  border-top: 1px solid var(--neutral-200);
+  border: 1px solid var(--neutral-200);
+  border-top: 3px solid var(--primary);
+  border-radius: 0 0 4px 4px;
   flex-shrink: 0;
+}
+
+.footer-version {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--neutral-700);
+  color: var(--white);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
 }
 
 /* â”€â”€ PAGE BODY â”€â”€ */
@@ -177,6 +197,7 @@ body {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .page-body::-webkit-scrollbar { width: 6px; }
@@ -188,13 +209,17 @@ body {
   display: flex;
   height: 100%;
   overflow: hidden;
+  gap: 12px;
+  padding: 14px;
+  background: var(--neutral-100);
 }
 
 .sidebar {
   width: 200px;
   min-width: 200px;
   background: var(--white);
-  border-right: 1px solid var(--neutral-200);
+  border: 1px solid var(--neutral-200);
+  border-radius: 6px;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -275,6 +300,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  background: var(--white);
+  border: 1px solid var(--neutral-200);
+  border-radius: 6px;
+  min-width: 0;
 }
 
 .main-content::-webkit-scrollbar { width: 6px; }
@@ -282,8 +311,8 @@ body {
 
 #dashPage .topbar {
   background: var(--white);
-  border-bottom: 1px solid var(--neutral-200);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border-bottom: 3px solid var(--primary);
+  box-shadow: none;
 }
 
 #dashPage .topbar-brand,
@@ -308,7 +337,7 @@ body {
 }
 
 #dashPage .footer {
-  display: none;
+  display: flex;
 }
 
 .dashboard-shell-grid {
@@ -1456,8 +1485,8 @@ body {
   }
 
   .topbar-logo-container {
-    width: 48px;
-    height: 40px;
+    width: 92px;
+    height: 52px;
   }
 
   .topbar-brand {
@@ -1494,8 +1523,7 @@ body {
     width: 100%;
     min-width: 0;
     max-height: none;
-    border-right: 0;
-    border-bottom: 1px solid var(--neutral-200);
+    border: 1px solid var(--neutral-200);
     padding: 10px 12px;
     flex-direction: row;
     gap: 8px;
@@ -1528,6 +1556,18 @@ body {
     width: 100%;
     padding: 14px;
     overflow: visible;
+  }
+
+  .footer {
+    min-height: 54px;
+    padding: 10px 12px;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .footer-version {
+    position: static;
+    transform: none;
   }
 
   .dashboard-shell-grid,
@@ -1690,7 +1730,10 @@ body {
       </form>
     </div>
   </div>
-  <div class="footer">© 2026 APEXIZ • CONFIDENTIAL INFORMATION • ALL RIGHTS RESERVED</div>
+  <div class="footer">
+    <span>© 2026 APEXIZ • CONFIDENTIAL INFORMATION • ALL RIGHTS RESERVED</span>
+    <span class="footer-version">WV-2026.04.16.02 | 21/04/2026, 18:06:56</span>
+  </div>
 </div>
 
 <!-- â•â• DASHBOARD PAGE â•â• -->
@@ -1754,7 +1797,10 @@ body {
     </div>
   </div>
 
-  <div class="footer">© 2026 APEXIZ • CONFIDENTIAL • ALL RIGHTS RESERVED</div>
+  <div class="footer">
+    <span>© 2026 APEXIZ • CONFIDENTIAL • ALL RIGHTS RESERVED</span>
+    <span class="footer-version">WV-2026.04.16.02 | 21/04/2026, 18:06:56</span>
+  </div>
 </div>
 
 <!-- â•â• MODALS â•â• -->
