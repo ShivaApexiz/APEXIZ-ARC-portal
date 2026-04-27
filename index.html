@@ -1650,7 +1650,7 @@ body {
         </div>
         <div class="form-group">
           <label class="form-label">Password</label>
-          <input type="password" id="loginPassword" class="form-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required>
+          <input type="password" id="loginPassword" class="form-input" placeholder="Password" required>
         </div>
         <button type="submit" class="btn-primary">Sign In</button>
         <button type="button" class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="requestPasswordReset()">Forgot Password</button>
@@ -1722,6 +1722,7 @@ body {
         <div class="nav-section">Account</div>
         <button class="nav-item" id="navMyContract" onclick="showPanel('mycontract')">My Contract</button>
         <button class="nav-item" id="navMyHours" onclick="showPanel('myhours')">Hours Usage</button>
+        <button class="nav-item" id="navCustomerReports" onclick="showPanel('reports')">Reports</button>
       </div>
 
       <div class="nav-divider"></div>
@@ -1949,6 +1950,34 @@ function closeTextDetail() {
   document.getElementById('textDetailPopover')?.remove();
 }
 
+function cacheArcSession(session) {
+  if (!session?.access_token || !session?.refresh_token) return;
+  localStorage.setItem('arcSupabaseSessionBackup', JSON.stringify({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token
+  }));
+}
+
+function clearArcSessionCache() {
+  localStorage.removeItem('arcSupabaseSessionBackup');
+}
+
+async function restoreCachedArcSession() {
+  try {
+    const cached = JSON.parse(localStorage.getItem('arcSupabaseSessionBackup') || 'null');
+    if (!cached?.access_token || !cached?.refresh_token) return null;
+    const { data, error } = await sb.auth.setSession(cached);
+    if (error) {
+      clearArcSessionCache();
+      return null;
+    }
+    return data.session || null;
+  } catch (error) {
+    clearArcSessionCache();
+    return null;
+  }
+}
+
 function getFallbackCustomerProfile(user) {
   const meta = user?.user_metadata || {};
   if (meta.role !== 'customer' || !meta.customer_id) return null;
@@ -1958,6 +1987,30 @@ function getFallbackCustomerProfile(user) {
     email: user.email || meta.email || '',
     role: 'customer',
     customer_id: meta.customer_id
+  };
+}
+
+async function resolveCustomerProfileFallback(user) {
+  const metaProfile = getFallbackCustomerProfile(user);
+  if (metaProfile) return metaProfile;
+
+  const email = user?.email || user?.user_metadata?.email;
+  if (!email) return null;
+
+  const { data: customer } = await sb
+    .from('arc_customers')
+    .select('id, contact_person, company_name, email')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (!customer) return null;
+
+  return {
+    id: user.id,
+    name: customer.contact_person || customer.company_name || email.split('@')[0] || 'Customer',
+    email,
+    role: 'customer',
+    customer_id: customer.id
   };
 }
 
@@ -2053,6 +2106,8 @@ async function doLogin(e) {
       return;
     }
 
+    cacheArcSession(data.session);
+
     // Fetch profile
     const { data: profile, error: profileErr } = await sb
       .from('arc_profiles')
@@ -2060,7 +2115,7 @@ async function doLogin(e) {
       .eq('id', data.user.id)
       .single();
 
-    const fallbackProfile = profileErr || !profile ? getFallbackCustomerProfile(data.user) : null;
+    const fallbackProfile = profileErr || !profile ? await resolveCustomerProfileFallback(data.user) : null;
     if (fallbackProfile) {
       STATE.user = data.user;
       STATE.profile = fallbackProfile;
@@ -2117,6 +2172,7 @@ async function requestPasswordReset() {
 }
 
 async function doLogout() {
+  clearArcSessionCache();
   await sb.auth.signOut();
   STATE.user = null;
   STATE.profile = null;
@@ -2167,13 +2223,15 @@ async function restoreSession(session) {
     return;
   }
 
+  cacheArcSession(session);
+
   const { data: profile, error: profileErr } = await sb
     .from('arc_profiles')
     .select('*')
     .eq('id', session.user.id)
     .single();
 
-  const fallbackProfile = profileErr || !profile ? getFallbackCustomerProfile(session.user) : null;
+  const fallbackProfile = profileErr || !profile ? await resolveCustomerProfileFallback(session.user) : null;
   if (fallbackProfile) {
     STATE.user = session.user;
     STATE.profile = fallbackProfile;
@@ -2233,7 +2291,9 @@ function routeUser(profile) {
 async function showPanel(name) {
   STATE.currentPanel = name;
   document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-  const navEl = document.getElementById('nav' + name.charAt(0).toUpperCase() + name.slice(1));
+  const navEl = name === 'reports' && STATE.profile?.role === 'customer'
+    ? document.getElementById('navCustomerReports')
+    : document.getElementById('nav' + name.charAt(0).toUpperCase() + name.slice(1));
   if (navEl) navEl.classList.add('active');
 
   const main = document.getElementById('mainContent');
@@ -2649,10 +2709,10 @@ async function renderDashboard() {
       .eq('customer_id', STATE.profile.customer_id)
       .order('start_date', { ascending: false });
 
-    let html = '<div class="panel-title">ðŸ“Š Dashboard</div>';
+    let html = '<div class="panel-title">Dashboard</div>';
 
     if (!contracts || contracts.length === 0) {
-      html += '<div class="empty-state"><div class="empty-state-icon">ðŸ“‹</div><div class="empty-state-text">No active contracts found.</div></div>';
+      html += '<div class="empty-state"><div class="empty-state-icon">-</div><div class="empty-state-text">No active contracts found.</div></div>';
     } else {
       const contract = contracts[0];
       const { data: logs } = await sb
@@ -2689,7 +2749,7 @@ async function renderDashboard() {
       `;
 
       if (pctUsed >= 90) {
-        html += `<div class="alert warning show"><strong>âš ï¸ High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
+      html += `<div class="alert warning show"><strong>High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
       }
     }
 
@@ -2702,7 +2762,7 @@ async function renderDashboard() {
     const totalHours = contracts?.reduce((sum, c) => sum + (c.total_hours || 0), 0) || 0;
     const usedHours = logs?.reduce((sum, l) => sum + (l.hours || 0), 0) || 0;
 
-    let html = `<div class="panel-title">ðŸ“Š Dashboard</div>
+    let html = `<div class="panel-title">Dashboard</div>
       <div class="cards-grid">
         <div class="card">
           <div class="card-label">Total Customers</div>
@@ -2834,7 +2894,7 @@ async function openCustomerModal() {
   modal.innerHTML = `
     <div class="modal-title">
       <span>New Customer</span>
-      <button class="modal-close" onclick="closeModal()">âœ•</button>
+      <button class="modal-close" onclick="closeModal()">x</button>
     </div>
     <div class="form-card">
       <div class="form-group">
@@ -2867,7 +2927,7 @@ async function openCustomerModal() {
           <input type="tel" id="custMobile" class="form-input" placeholder="9876543210">
         </div>
       </div>
-      <button class="btn btn-primary" onclick="saveCustomer()">Register Customer â†’</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">Register Customer</button>
       <div id="customerMsg" class="auth-msg"></div>
     </div>
   `;
@@ -3124,7 +3184,7 @@ async function openContractModal() {
   modal.innerHTML = `
     <div class="modal-title">
       <span>New Contract</span>
-      <button class="modal-close" onclick="closeModal()">âœ•</button>
+      <button class="modal-close" onclick="closeModal()">x</button>
     </div>
     <div class="form-card">
       <div class="form-group">
@@ -3151,9 +3211,9 @@ async function openContractModal() {
       </div>
       <div class="form-group">
         <label class="form-label">Notes</label>
-        <textarea id="contractNotes" class="form-textarea" placeholder="Optional notesâ€¦"></textarea>
+        <textarea id="contractNotes" class="form-textarea" placeholder="Optional notes"></textarea>
       </div>
-      <button class="btn btn-primary" onclick="saveContract()">Create Contract â†’</button>
+      <button class="btn btn-primary" onclick="saveContract()">Create Contract</button>
     </div>
   `;
   document.getElementById('modalOverlay').classList.add('open');
@@ -3172,7 +3232,7 @@ async function saveContract() {
     return;
   }
 
-  loading(true, 'Savingâ€¦');
+  loading(true, 'Saving...');
 
   const { error } = await sb.from('arc_contracts').insert({
     contract_name: contractName,
@@ -3211,7 +3271,7 @@ async function openProjectsModal(contractId) {
         <td><strong>${project.project_name}</strong></td>
         <td>${project.status || 'active'}</td>
         <td>${formatCurrency(project.arc_time_logs?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0)}</td>
-        <td>${project.notes || 'â€”'}</td>
+        <td>${project.notes || '-'}</td>
         <td><button class="btn btn-sm btn-danger" onclick="deleteProject('${project.id}', '${contractId}')">Delete</button></td>
       </tr>
     `).join('')
@@ -3301,7 +3361,7 @@ async function deleteProject(projectId, contractId) {
 async function deleteContract(id) {
   if (!confirm('Delete this contract? This cannot be undone.')) return;
 
-  loading(true, 'Deletingâ€¦');
+  loading(true, 'Deleting...');
   await sb.from('arc_contracts').delete().eq('id', id);
   loading(false);
   showPanel('contracts');
@@ -3994,7 +4054,7 @@ async function renderMyHours() {
   let html = '<div class="panel-title">Hours Usage</div>';
 
   if (!contracts || contracts.length === 0) {
-    html += '<div class="empty-state"><div class="empty-state-icon">ðŸ“‹</div><div class="empty-state-text">No active contracts found.</div></div>';
+    html += '<div class="empty-state"><div class="empty-state-icon">-</div><div class="empty-state-text">No active contracts found.</div></div>';
   } else {
     const c = contracts[0];
     const { data: logs } = await sb
@@ -4032,7 +4092,7 @@ async function renderMyHours() {
     `;
 
     if (pctUsed >= 90) {
-      html += `<div class="alert warning show"><strong>âš ï¸ High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
+      html += `<div class="alert warning show"><strong>High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
     }
 
     html += '<div class="panel-title" style="margin-top:24px">Time Log History</div><div class="table-wrapper"><table class="data-table time-log-table"><thead><tr><th>Date</th><th>Project</th><th class="detail-col">Description</th><th>Hours</th><th class="detail-col">Comments</th></tr></thead><tbody>';
@@ -4041,7 +4101,7 @@ async function renderMyHours() {
       html += logs.map(log => `
         <tr>
           <td>${formatDate(log.work_date)}</td>
-          <td><strong>${log.arc_projects?.project_name || 'â€”'}</strong></td>
+          <td><strong>${log.arc_projects?.project_name || '-'}</strong></td>
           <td>${renderExpandableText(log.description || log.task_name, 'Description', 120)}</td>
           <td><strong>${formatCurrency(log.hours)}</strong></td>
           <td>${renderExpandableText(log.comments, 'Comments', 120)}</td>
@@ -4054,7 +4114,7 @@ async function renderMyHours() {
     html += '</tbody></table></div>';
 
     if (logs && logs.length > 0) {
-      html += `<button class="btn btn-primary" onclick="exportToExcel()">ðŸ“Š Export to Excel</button>`;
+      html += `<button class="btn btn-primary" onclick="exportToExcel()">Export to Excel</button>`;
     }
   }
 
@@ -4063,17 +4123,32 @@ async function renderMyHours() {
 
 /* â”€â”€ REPORTS (ADMIN) â”€â”€ */
 async function renderReports() {
-  const { data: contracts } = await sb.from('arc_contracts').select('id, contract_name, arc_customers(company_name)');
+  const isCustomer = STATE.profile.role === 'customer';
+  let contractsQuery = sb.from('arc_contracts').select('id, contract_name, customer_id').order('start_date', { ascending: false });
+  if (isCustomer) contractsQuery = contractsQuery.eq('customer_id', STATE.profile.customer_id);
+
+  const [contractsRes, customersRes] = await Promise.all([
+    contractsQuery,
+    isCustomer ? Promise.resolve({ data: [] }) : sb.from('arc_customers').select('id, company_name')
+  ]);
+
+  if (contractsRes.error || customersRes.error) {
+    document.getElementById('mainContent').innerHTML = `<div class="alert error show">Unable to load reports: ${(contractsRes.error || customersRes.error).message}</div>`;
+    return;
+  }
+
+  const customerMap = Object.fromEntries((customersRes.data || []).map(customer => [customer.id, customer.company_name]));
+  const contracts = contractsRes.data || [];
 
   let html = `
-    <div class="panel-title">ðŸ“Š Reports</div>
+    <div class="panel-title">Reports</div>
     <div class="form-card">
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Customer</label>
+          <label class="form-label">Contract</label>
           <select id="reportCustomer" class="form-select">
             <option value="">All Contracts</option>
-            ${contracts?.map(c => `<option value="${c.id}">${c.arc_customers?.company_name || 'Customer'} - ${c.contract_name || 'Contract'}</option>`).join('')}
+            ${contracts.map(c => `<option value="${c.id}">${isCustomer ? '' : (customerMap[c.customer_id] || 'Customer') + ' - '}${c.contract_name || 'Contract'}</option>`).join('')}
           </select>
         </div>
         <div class="form-group">
@@ -4097,19 +4172,33 @@ async function renderReports() {
 }
 
 async function getProjectReportRows(contractId = '', start = '', end = '') {
+  const isCustomer = STATE.profile.role === 'customer';
+  let contractsQuery = sb
+    .from('arc_contracts')
+    .select('id, contract_name, customer_id')
+    .order('start_date', { ascending: false });
+
+  if (contractId) contractsQuery = contractsQuery.eq('id', contractId);
+  if (isCustomer) contractsQuery = contractsQuery.eq('customer_id', STATE.profile.customer_id);
+
+  const contractsRes = await contractsQuery;
+  if (contractsRes.error) return { error: contractsRes.error };
+
+  const contractIds = (contractsRes.data || []).map(contract => contract.id);
+  if (!contractIds.length) return { rows: [] };
+
   let projectQuery = sb
     .from('arc_projects')
-    .select('*, arc_contracts(id, contract_name, arc_customers(company_name))')
+    .select('*')
+    .in('contract_id', contractIds)
     .order('start_date', { ascending: true });
-
-  if (contractId) projectQuery = projectQuery.eq('contract_id', contractId);
 
   let logQuery = sb
     .from('arc_time_logs')
     .select('project_id, contract_id, work_date, created_at, hours, description, task_name, comments')
+    .in('contract_id', contractIds)
     .order('work_date', { ascending: false });
 
-  if (contractId) logQuery = logQuery.eq('contract_id', contractId);
   if (start) logQuery = logQuery.gte('work_date', start);
   if (end) logQuery = logQuery.lte('work_date', end);
 
@@ -4154,7 +4243,7 @@ async function generateReport() {
   const start = document.getElementById('reportStart').value;
   const end = document.getElementById('reportEnd').value;
 
-  loading(true, 'Generating reportâ€¦');
+  loading(true, 'Generating report...');
   const { rows, error } = await getProjectReportRows(custId, start, end);
 
   loading(false);
@@ -4221,6 +4310,11 @@ async function exportToExcel() {
 }
 
 async function exportReportToExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Excel export library is still loading. Refresh the page and try Export to Excel again.');
+    return;
+  }
+
   const custId = document.getElementById('reportCustomer').value;
   const start = document.getElementById('reportStart').value;
   const end = document.getElementById('reportEnd').value;
@@ -4264,8 +4358,12 @@ async function exportReportToExcel() {
     { wch: 14 },
     { wch: 42 }
   ];
-  XLSX.utils.book_append_sheet(wb, ws, new Date().toISOString().split('T')[0]);
-  XLSX.writeFile(wb, 'arc-hours-report-' + new Date().toISOString().split('T')[0] + '.xlsx');
+  try {
+    XLSX.utils.book_append_sheet(wb, ws, new Date().toISOString().split('T')[0]);
+    XLSX.writeFile(wb, 'arc-hours-report-' + new Date().toISOString().split('T')[0] + '.xlsx');
+  } catch (error) {
+    alert('Unable to generate Excel report: ' + error.message);
+  }
 }
 
 function closeModal() {
@@ -4276,7 +4374,7 @@ function closeModal() {
    INIT
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 window.addEventListener('load', async () => {
-  loading(true, 'Initializingâ€¦');
+  loading(true, 'Initializing...');
 
   try {
     const recoveryMode = isPasswordRecoveryUrl();
@@ -4290,7 +4388,8 @@ window.addEventListener('load', async () => {
       if (event === 'PASSWORD_RECOVERY') showPasswordSetup();
     });
 
-    const { data: { session } } = await sb.auth.getSession();
+    let { data: { session } } = await sb.auth.getSession();
+    if (!session) session = await restoreCachedArcSession();
     loading(false);
 
     if (recoveryMode || isPasswordRecoveryMode()) {
@@ -4308,4 +4407,3 @@ window.addEventListener('load', async () => {
 </script>
 </body>
 </html>
-
