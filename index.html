@@ -2344,6 +2344,24 @@ async function renderDashboardV2() {
         `;
       }).join('')
     : '<tr><td colspan="6" style="text-align:center;padding:28px">No contracts yet.</td></tr>';
+  const cautionContracts = contracts
+    .map(contract => {
+      const total = contract.total_hours || 0;
+      const used = usedByContract[contract.id] || 0;
+      const pct = total ? (used / total) * 100 : 0;
+      return {
+        name: contract.contract_name || contract.arc_customers?.company_name || 'Contract',
+        pct
+      };
+    })
+    .filter(contract => contract.pct >= 75);
+  const contractCautionNotice = cautionContracts.length
+    ? `<div class="alert warning show" style="margin:0 0 16px">
+        <strong>Caution: 75% of Hours Used</strong><br>
+        ${cautionContracts.map(contract => `${escapeHtml(contract.name)} is at ${contract.pct.toFixed(1)}% usage.`).join('<br>')}
+        <br>You are approaching your contracted hour limit. Please plan accordingly.
+      </div>`
+    : '';
 
   main.innerHTML = `
     <div class="dashboard-shell-grid">
@@ -2393,6 +2411,7 @@ async function renderDashboardV2() {
 
     <div class="dashboard-section">
       <div class="dashboard-section-header">${isCustomer ? 'My Contracts' : 'All Contracts'}</div>
+      ${contractCautionNotice ? `<div style="padding:0 16px">${contractCautionNotice}</div>` : ''}
       <div class="table-section-body">
         <table class="data-table">
           <thead><tr><th>Contract</th><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Projects</th><th>Used Hours</th></tr></thead>
@@ -2406,6 +2425,7 @@ async function renderDashboardV2() {
 
 async function renderContractDashboard(contractId) {
   const main = document.getElementById('mainContent');
+  const isCustomer = STATE.profile.role === 'customer';
   loading(true, 'Loading contract dashboard...');
 
   const contractRes = await sb
@@ -2421,7 +2441,7 @@ async function renderContractDashboard(contractId) {
   }
 
   const contract = contractRes.data;
-  if (STATE.profile.role === 'customer' && contract.customer_id !== STATE.profile.customer_id) {
+  if (isCustomer && contract.customer_id !== STATE.profile.customer_id) {
     loading(false);
     main.innerHTML = '<div class="alert error show">You do not have access to this contract.</div>';
     return;
@@ -2454,6 +2474,13 @@ async function renderContractDashboard(contractId) {
   const totalHours = contract.total_hours || 0;
   const remainingHours = Math.max(totalHours - usedHours, 0);
   const usagePercent = totalHours ? Math.min((usedHours / totalHours) * 100, 100) : 0;
+  const rawUsagePercent = totalHours ? (usedHours / totalHours) * 100 : 0;
+  const usageCautionNotice = rawUsagePercent >= 75
+    ? `<div class="alert warning show" style="margin:0 0 16px">
+        <strong>Caution: 75% of Hours Used</strong><br>
+        You are approaching your contracted hour limit. Please plan accordingly.
+      </div>`
+    : '';
   const projectHours = projects.map(project => {
     const hours = logs
       .filter(log => log.project_id === project.id)
@@ -2493,12 +2520,16 @@ async function renderContractDashboard(contractId) {
       <button class="btn btn-secondary page-action-btn" onclick="renderDashboardV2()">Back to Dashboard</button>
     </div>
 
+    ${usageCautionNotice}
+
     <div class="dashboard-shell-grid">
-      <div class="card">
-        <div class="card-label">Customer</div>
-        <div class="card-value" style="font-size:20px">${escapeHtml(customer.company_name || '-')}</div>
-        <div class="card-sub">Contract owner</div>
-      </div>
+      ${isCustomer ? '' : `
+        <div class="card">
+          <div class="card-label">Customer</div>
+          <div class="card-value" style="font-size:20px">${escapeHtml(customer.company_name || '-')}</div>
+          <div class="card-sub">Contract owner</div>
+        </div>
+      `}
       <div class="card">
         <div class="card-label">Total Hours</div>
         <div class="card-value">${formatCurrency(totalHours)}h</div>
@@ -2520,13 +2551,13 @@ async function renderContractDashboard(contractId) {
       <div class="dashboard-section-header">Contract Usage</div>
       <div class="overview-grid">
         <div class="overview-pane">
-          <div class="card-label">Hours Used</div>
+          <div class="card-label">Hours Used (${rawUsagePercent.toFixed(1)}%)</div>
           <div class="progress-container">
             <div class="progress-bar">
               <div class="progress-fill ${getUsageStatus(usedHours, totalHours || 1)}" style="width:${usagePercent}%"></div>
             </div>
           </div>
-          <div class="card-sub" style="margin-top:10px">${formatCurrency(usedHours)}h of ${formatCurrency(totalHours)}h</div>
+          <div class="card-sub" style="margin-top:10px">${formatCurrency(usedHours)}h of ${formatCurrency(totalHours)}h used (${rawUsagePercent.toFixed(1)}%)</div>
         </div>
         <div class="overview-pane">
           <div class="card-label">Hours by Project</div>
