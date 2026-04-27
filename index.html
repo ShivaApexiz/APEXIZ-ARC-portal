@@ -2351,19 +2351,25 @@ async function renderDashboardV2() {
       const pct = total ? (used / total) * 100 : 0;
       return {
         name: contract.contract_name || contract.arc_customers?.company_name || 'Contract',
+        used,
         pct
       };
     })
     .filter(contract => contract.pct >= 75);
   const contractCautionNotice = cautionContracts.length
     ? `<div class="alert warning show" style="margin:0 0 16px">
-        <strong>Caution: 75% of Hours Used</strong><br>
-        ${cautionContracts.map(contract => `${escapeHtml(contract.name)} is at ${contract.pct.toFixed(1)}% usage.`).join('<br>')}
-        <br>You are approaching your contracted hour limit. Please plan accordingly.
+        ${cautionContracts.map(contract => isCustomer
+          ? `<strong>${escapeHtml(contract.name)}</strong><br>
+             Caution: ${formatCurrency(contract.used)}h of Hours Used<br>
+             ${contract.pct >= 100 ? 'You have used all of your contract hours.' : 'You are approaching your contracted hour limit. Please plan accordingly.'}`
+          : `<strong>${escapeHtml(contract.name)}:</strong> ${formatCurrency(contract.used)}h of Hours Used. Update the customer to renewal his contract.`
+        ).join('<br><br>')}
       </div>`
     : '';
 
   main.innerHTML = `
+    ${contractCautionNotice}
+
     <div class="dashboard-shell-grid">
       ${metricCards.map(card => `
         <div class="card">
@@ -2411,7 +2417,6 @@ async function renderDashboardV2() {
 
     <div class="dashboard-section">
       <div class="dashboard-section-header">${isCustomer ? 'My Contracts' : 'All Contracts'}</div>
-      ${contractCautionNotice ? `<div style="padding:0 16px">${contractCautionNotice}</div>` : ''}
       <div class="table-section-body">
         <table class="data-table">
           <thead><tr><th>Contract</th><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Projects</th><th>Used Hours</th></tr></thead>
@@ -2477,8 +2482,12 @@ async function renderContractDashboard(contractId) {
   const rawUsagePercent = totalHours ? (usedHours / totalHours) * 100 : 0;
   const usageCautionNotice = rawUsagePercent >= 75
     ? `<div class="alert warning show" style="margin:0 0 16px">
-        <strong>Caution: 75% of Hours Used</strong><br>
-        You are approaching your contracted hour limit. Please plan accordingly.
+        ${isCustomer
+          ? `<strong>${escapeHtml(contract.contract_name || 'Contract')}</strong><br>
+             Caution: ${formatCurrency(usedHours)}h of Hours Used<br>
+             ${rawUsagePercent >= 100 ? 'You have used all of your contract hours.' : 'You are approaching your contracted hour limit. Please plan accordingly.'}`
+          : `<strong>${escapeHtml(contract.contract_name || 'Contract')}:</strong> ${formatCurrency(usedHours)}h of Hours Used. Update the customer to renewal his contract.`
+        }
       </div>`
     : '';
   const projectHours = projects.map(project => {
@@ -2551,7 +2560,7 @@ async function renderContractDashboard(contractId) {
       <div class="dashboard-section-header">Contract Usage</div>
       <div class="overview-grid">
         <div class="overview-pane">
-          <div class="card-label">Hours Used (${rawUsagePercent.toFixed(1)}%)</div>
+          <div class="card-label">Hours Used</div>
           <div class="progress-container">
             <div class="progress-bar">
               <div class="progress-fill ${getUsageStatus(usedHours, totalHours || 1)}" style="width:${usagePercent}%"></div>
