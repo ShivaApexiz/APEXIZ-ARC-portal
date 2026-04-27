@@ -253,7 +253,7 @@ body {
 
 .nav-item {
   padding: 8px 11px;
-  margin-bottom: 0;
+  margin-bottom: 4px;
   border: none;
   background: none;
   border-radius: 6px;
@@ -267,10 +267,6 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.nav-item + .nav-item {
-  margin-top: 10px;
 }
 
 .nav-item:hover { background: var(--primary-light); color: var(--primary); }
@@ -1531,7 +1527,7 @@ body {
     border: 1px solid var(--neutral-200);
     padding: 10px 12px;
     flex-direction: row;
-    gap: 12px;
+    gap: 8px;
     overflow-x: auto;
     overflow-y: hidden;
     align-items: center;
@@ -1549,11 +1545,8 @@ body {
   .nav-item,
   .sidebar .logout-btn {
     white-space: nowrap;
+    margin-bottom: 0;
     flex: 0 0 auto;
-  }
-
-  .nav-item + .nav-item {
-    margin-top: 0;
   }
 
   .sidebar .logout-btn {
