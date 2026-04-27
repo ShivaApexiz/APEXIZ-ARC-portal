@@ -1881,7 +1881,6 @@ const STATE = {
     status: ''
   }
 };
-let customerFilterTimer = null;
 
 const COUNTRIES = [
   ['Afghanistan', '+93'],
@@ -2925,7 +2924,7 @@ async function renderCustomers() {
         <div class="viewer-row-label">Filters</div>
         <div class="viewer-filter-controls-customer">
           <div class="filter-chip viewer-toolbar-search">
-            <input type="text" id="customerFilterSearch" class="form-input" placeholder="Search customer/contact/email" value="${filters.search || ''}" oninput="queueCustomerFilters()">
+            <input type="text" id="customerFilterSearch" class="form-input" placeholder="Search customer/contact/email" value="${filters.search || ''}" oninput="filterCustomerRowsLive()">
           </div>
           <div class="filter-chip">
             <select id="customerFilterCountry" class="form-select" onchange="applyCustomerFilters()">${countryOptions}</select>
@@ -2946,7 +2945,7 @@ async function renderCustomers() {
         <thead>
           <tr><th>Company</th><th>Country</th><th>Contact</th><th>Email</th><th>Mobile</th><th>Status</th><th>Actions</th></tr>
         </thead>
-        <tbody>
+        <tbody id="customerTableBody">
   `;
 
   if (sortedCustomers.length > 0) {
@@ -2954,7 +2953,7 @@ async function renderCustomers() {
       const status = (c.status || 'active').toLowerCase();
       const nextStatus = status === 'active' ? 'inactive' : 'active';
       return `
-      <tr>
+      <tr class="customer-data-row" data-customer-search="${escapeHtml([c.company_name, c.country, c.contact_person, c.email, c.contact_mobile_country_code, c.contact_mobile].filter(Boolean).join(' ').toLowerCase())}">
         <td><strong>${c.company_name}</strong></td>
         <td>${c.country || '-'}</td>
         <td>${c.contact_person || '-'}</td>
@@ -2970,11 +2969,12 @@ async function renderCustomers() {
     `;
     }).join('');
   } else {
-    html += '<tr><td colspan="7" style="text-align:center;padding:40px">No customers yet.</td></tr>';
+    html += '<tr class="customer-empty-row"><td colspan="7" style="text-align:center;padding:40px">No customers yet.</td></tr>';
   }
 
-  html += '</tbody></table></div>';
+  html += '<tr id="customerNoSearchResults" style="display:none"><td colspan="7" style="text-align:center;padding:40px">No matching customers.</td></tr></tbody></table></div>';
   document.getElementById('mainContent').innerHTML = html;
+  filterCustomerRowsLive(false);
 }
 
 async function openCustomerModal(customerId = '') {
@@ -3596,8 +3596,31 @@ function applyContractFilters() {
 }
 
 function queueCustomerFilters() {
-  clearTimeout(customerFilterTimer);
-  customerFilterTimer = setTimeout(applyCustomerFilters, 250);
+  filterCustomerRowsLive();
+}
+
+function filterCustomerRowsLive(updateState = true) {
+  const input = document.getElementById('customerFilterSearch');
+  if (!input) return;
+
+  const search = input.value.trim().toLowerCase();
+  if (updateState) {
+    STATE.customerFilters = {
+      ...(STATE.customerFilters || {}),
+      search
+    };
+  }
+
+  const rows = [...document.querySelectorAll('.customer-data-row')];
+  let visibleCount = 0;
+  rows.forEach(row => {
+    const visible = !search || (row.dataset.customerSearch || '').includes(search);
+    row.style.display = visible ? '' : 'none';
+    if (visible) visibleCount += 1;
+  });
+
+  const emptyRow = document.getElementById('customerNoSearchResults');
+  if (emptyRow) emptyRow.style.display = rows.length && !visibleCount ? '' : 'none';
 }
 
 function resetContractFilters() {
