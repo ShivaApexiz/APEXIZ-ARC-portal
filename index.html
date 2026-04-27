@@ -1756,7 +1756,14 @@ body {
 const SUPABASE_URL = 'https://yjmulcovzttnytmondlh.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlqbXVsY292enR0bnl0bW9uZGxoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NDQ2NjAsImV4cCI6MjA5MDUyMDY2MH0.y9su7u4vhJnJ1grSUgaJaQSbIC8bmgYsG44TXyq4trE';
 const AUTH_REDIRECT_URL = 'https://shivaapexiz.github.io/APEXIZ-ARC-portal/';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage
+  }
+});
 
 /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    STATE
@@ -4056,7 +4063,7 @@ async function renderMyHours() {
 
 /* â”€â”€ REPORTS (ADMIN) â”€â”€ */
 async function renderReports() {
-  const { data: contracts } = await sb.from('arc_contracts').select('id, arc_customers(company_name)');
+  const { data: contracts } = await sb.from('arc_contracts').select('id, contract_name, arc_customers(company_name)');
 
   let html = `
     <div class="panel-title">ðŸ“Š Reports</div>
@@ -4065,8 +4072,8 @@ async function renderReports() {
         <div class="form-group">
           <label class="form-label">Customer</label>
           <select id="reportCustomer" class="form-select">
-            <option value="">All Customers</option>
-            ${contracts?.map(c => `<option value="${c.id}">${c.arc_customers?.company_name}</option>`).join('')}
+            <option value="">All Contracts</option>
+            ${contracts?.map(c => `<option value="${c.id}">${c.arc_customers?.company_name || 'Customer'} - ${c.contract_name || 'Contract'}</option>`).join('')}
           </select>
         </div>
         <div class="form-group">
@@ -4089,61 +4096,92 @@ async function renderReports() {
   document.getElementById('mainContent').innerHTML = html;
 }
 
+async function getProjectReportRows(contractId = '', start = '', end = '') {
+  let projectQuery = sb
+    .from('arc_projects')
+    .select('*, arc_contracts(id, contract_name, arc_customers(company_name))')
+    .order('start_date', { ascending: true });
+
+  if (contractId) projectQuery = projectQuery.eq('contract_id', contractId);
+
+  let logQuery = sb
+    .from('arc_time_logs')
+    .select('project_id, contract_id, work_date, created_at, hours, description, task_name, comments')
+    .order('work_date', { ascending: false });
+
+  if (contractId) logQuery = logQuery.eq('contract_id', contractId);
+  if (start) logQuery = logQuery.gte('work_date', start);
+  if (end) logQuery = logQuery.lte('work_date', end);
+
+  const [projectsRes, logsRes] = await Promise.all([projectQuery, logQuery]);
+  const error = projectsRes.error || logsRes.error;
+  if (error) return { error };
+
+  const logsByProject = (logsRes.data || []).reduce((acc, log) => {
+    if (!log.project_id) return acc;
+    if (!acc[log.project_id]) acc[log.project_id] = [];
+    acc[log.project_id].push(log);
+    return acc;
+  }, {});
+
+  const rows = (projectsRes.data || []).map(project => {
+    const logs = logsByProject[project.id] || [];
+    const actualHours = logs.reduce((sum, log) => sum + (log.hours || 0), 0);
+    const latestLog = [...logs].sort((left, right) => {
+      const leftTime = new Date(left.work_date || left.created_at || 0).getTime();
+      const rightTime = new Date(right.work_date || right.created_at || 0).getTime();
+      return rightTime - leftTime;
+    })[0];
+
+    return {
+      projectTitle: project.project_name || '',
+      projectDescription: project.project_description || project.notes || '',
+      startDate: project.start_date || '',
+      estimatedEndDate: project.estimated_end_date || '',
+      actualEndDate: project.actual_end_date || '',
+      estimatedHours: project.estimated_hours || '',
+      actualHours,
+      status: project.status || 'active',
+      comments: latestLog?.comments || latestLog?.description || latestLog?.task_name || ''
+    };
+  });
+
+  return { rows };
+}
+
 async function generateReport() {
   const custId = document.getElementById('reportCustomer').value;
   const start = document.getElementById('reportStart').value;
   const end = document.getElementById('reportEnd').value;
 
   loading(true, 'Generating reportâ€¦');
-
-  let query = sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(id, contract_name, total_hours, arc_customers(company_name))');
-
-  if (custId) {
-    query = query.eq('contract_id', custId);
-  }
-  if (start) {
-    query = query.gte('work_date', start);
-  }
-  if (end) {
-    query = query.lte('work_date', end);
-  }
-
-  const { data: logs } = await query.order('work_date', { ascending: false });
+  const { rows, error } = await getProjectReportRows(custId, start, end);
 
   loading(false);
 
-  let html = '<div class="table-wrapper"><table class="data-table time-log-table"><thead><tr><th>Customer</th><th>Contract</th><th>Date</th><th>Project</th><th class="detail-col">Description</th><th>Hours</th><th class="detail-col">Comments</th></tr></thead><tbody>';
+  if (error) {
+    document.getElementById('reportResult').innerHTML = `<div class="alert error show">Unable to generate report: ${error.message}</div>`;
+    return;
+  }
 
-  if (logs && logs.length > 0) {
-    const groupedByCustomer = {};
-    logs.forEach(log => {
-      const custName = log.arc_contracts?.arc_customers?.company_name || 'Unknown';
-      if (!groupedByCustomer[custName]) {
-        groupedByCustomer[custName] = [];
-      }
-      groupedByCustomer[custName].push(log);
-    });
+  let html = '<div class="table-wrapper"><table class="data-table time-log-table"><thead><tr><th>Project Title</th><th class="detail-col">Project Description</th><th>Start Date</th><th>Est. End Date</th><th>Act. End Date</th><th>Est. Hours</th><th>Act. Hours</th><th>Apexiz Status</th><th class="detail-col">Comments</th></tr></thead><tbody>';
 
-    for (const [custName, custLogs] of Object.entries(groupedByCustomer)) {
-      const totalCustHours = custLogs.reduce((sum, log) => sum + log.hours, 0);
-      html += `<tr style="background:#f8f8f8;font-weight:700"><td>${custName}</td><td colspan="4"></td><td>${formatCurrency(totalCustHours)}</td><td></td></tr>`;
-      custLogs.forEach(log => {
-        html += `<tr>
-          <td></td>
-          <td><button type="button" class="text-preview-btn" onclick="renderContractDashboard('${log.arc_contracts?.id}')">${escapeHtml(log.arc_contracts?.contract_name || 'Contract')}</button></td>
-          <td>${formatDate(log.work_date)}</td>
-          <td>${log.arc_projects?.project_name || '-'}</td>
-          <td>${renderExpandableText(log.description || log.task_name, 'Description', 120)}</td>
-          <td>${formatCurrency(log.hours)}</td>
-          <td>${renderExpandableText(log.comments, 'Comments', 120)}</td>
-        </tr>`;
-      });
-    }
-
-    const totalHours = logs.reduce((sum, log) => sum + log.hours, 0);
-    html += `<tr style="background:#e8e8e8;font-weight:700"><td colspan="5">TOTAL</td><td>${formatCurrency(totalHours)}</td><td></td></tr>`;
+  if (rows && rows.length > 0) {
+    html += rows.map(row => `
+      <tr>
+        <td><strong>${escapeHtml(row.projectTitle)}</strong></td>
+        <td>${renderExpandableText(row.projectDescription, 'Project Description', 120)}</td>
+        <td>${formatDate(row.startDate)}</td>
+        <td>${formatDate(row.estimatedEndDate)}</td>
+        <td>${formatDate(row.actualEndDate)}</td>
+        <td>${row.estimatedHours || '-'}</td>
+        <td>${formatCurrency(row.actualHours)}</td>
+        <td>${escapeHtml(row.status)}</td>
+        <td>${renderExpandableText(row.comments, 'Latest Comments', 120)}</td>
+      </tr>
+    `).join('');
   } else {
-    html += '<tr><td colspan="7" style="text-align:center;padding:20px">No results found.</td></tr>';
+    html += '<tr><td colspan="9" style="text-align:center;padding:20px">No results found.</td></tr>';
   }
 
   html += '</tbody></table></div>';
@@ -4187,32 +4225,46 @@ async function exportReportToExcel() {
   const start = document.getElementById('reportStart').value;
   const end = document.getElementById('reportEnd').value;
 
-  let query = sb.from('arc_time_logs').select('*, arc_projects(project_name), arc_contracts(total_hours, arc_customers(company_name))');
+  loading(true, 'Exporting report...');
+  const { rows, error } = await getProjectReportRows(custId, start, end);
+  loading(false);
 
-  if (custId) {
-    query = query.eq('contract_id', custId);
+  if (error) {
+    alert('Unable to export report: ' + error.message);
+    return;
   }
-  if (start) {
-    query = query.gte('work_date', start);
-  }
-  if (end) {
-    query = query.lte('work_date', end);
-  }
-
-  const { data: logs } = await query.order('work_date');
 
   const wb = XLSX.utils.book_new();
-  const data = logs?.map(log => ({
-    Customer: log.arc_contracts?.arc_customers?.company_name || 'Unknown',
-    Date: formatDate(log.work_date),
-    Project: log.arc_projects?.project_name || '',
-    Description: log.task_name || '',
-    Hours: log.hours,
-    Comments: log.comments || log.description || ''
-  })) || [];
-
-  const ws = XLSX.utils.json_to_sheet(data);
-  XLSX.utils.book_append_sheet(wb, ws, 'Report');
+  const headers = ['Project Title', 'Project description', 'Start date', 'Est. End Date', 'Act. End Date', 'Est. Hours', 'Act. Hours', 'Apexiz Status', 'Comments'];
+  const aoa = [
+    ['APEXIZ ARC Project Report', '', '', '', '', '', '', '', ''],
+    headers,
+    ...(rows || []).map(row => [
+      row.projectTitle,
+      row.projectDescription,
+      row.startDate ? formatDate(row.startDate) : '',
+      row.estimatedEndDate ? formatDate(row.estimatedEndDate) : '',
+      row.actualEndDate ? formatDate(row.actualEndDate) : '',
+      row.estimatedHours || '',
+      row.actualHours || 0,
+      row.status,
+      row.comments
+    ])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }];
+  ws['!cols'] = [
+    { wch: 30 },
+    { wch: 27 },
+    { wch: 13 },
+    { wch: 14 },
+    { wch: 13 },
+    { wch: 13 },
+    { wch: 13 },
+    { wch: 14 },
+    { wch: 42 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, new Date().toISOString().split('T')[0]);
   XLSX.writeFile(wb, 'arc-hours-report-' + new Date().toISOString().split('T')[0] + '.xlsx');
 }
 
@@ -4227,8 +4279,12 @@ window.addEventListener('load', async () => {
   loading(true, 'Initializingâ€¦');
 
   try {
-    const recoveryMode = isPasswordRecoveryMode();
-    if (recoveryMode) sessionStorage.setItem('arcPasswordRecovery', '1');
+    const recoveryMode = isPasswordRecoveryUrl();
+    if (recoveryMode) {
+      sessionStorage.setItem('arcPasswordRecovery', '1');
+    } else {
+      sessionStorage.removeItem('arcPasswordRecovery');
+    }
 
     sb.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') showPasswordSetup();
@@ -4241,6 +4297,8 @@ window.addEventListener('load', async () => {
       showPasswordSetup();
     } else if (session) {
       await restoreSession(session);
+    } else {
+      showPage('authPage');
     }
   } catch (e) {
     loading(false);
