@@ -2468,7 +2468,9 @@ async function renderDashboardV2() {
 
   const projectHoursMap = logs.reduce((acc, log) => {
     const projectName = log.arc_projects?.project_name || 'Unassigned';
-    acc[projectName] = (acc[projectName] || 0) + (log.hours || 0);
+    const contractName = log.arc_contracts?.contract_name || 'Contract';
+    const label = `${projectName} - ${contractName}`;
+    acc[label] = (acc[label] || 0) + (log.hours || 0);
     return acc;
   }, {});
 
@@ -4322,7 +4324,7 @@ async function renderMyContract() {
 }
 
 /* â”€â”€ MY HOURS (CUSTOMER) â”€â”€ */
-async function renderMyHours() {
+async function renderMyHours(selectedContractId = '') {
   const { data: contracts } = await sb
     .from('arc_contracts')
     .select('*')
@@ -4334,7 +4336,10 @@ async function renderMyHours() {
   if (!contracts || contracts.length === 0) {
     html += '<div class="empty-state"><div class="empty-state-icon">-</div><div class="empty-state-text">No active contracts found.</div></div>';
   } else {
-    const c = contracts[0];
+    const c = contracts.find(contract => contract.id === selectedContractId) || contracts[0];
+    const contractOptions = contracts.map(contract => `
+      <option value="${contract.id}" ${contract.id === c.id ? 'selected' : ''}>${escapeHtml(contract.contract_name || 'Contract')}</option>
+    `).join('');
     const { data: logs } = await sb
       .from('arc_time_logs')
       .select('*, arc_projects(project_name)')
@@ -4348,6 +4353,14 @@ async function renderMyHours() {
     const status = getUsageStatus(hoursUsed, c.total_hours);
 
     html += `
+      <div class="form-card" style="margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Contract</label>
+          <select id="myHoursContractSelect" class="form-select" onchange="renderMyHours(this.value)">
+            ${contractOptions}
+          </select>
+        </div>
+      </div>
       <div class="cards-grid">
         <div class="card">
           <div class="card-label">Total Contracted</div>
