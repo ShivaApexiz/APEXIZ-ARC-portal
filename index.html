@@ -2521,7 +2521,7 @@ async function renderDashboardV2() {
         return `
           <tr class="clickable-row" onclick="renderContractDashboard('${contract.id}')">
             <td>${contract.contract_name || '-'}</td>
-            <td>${contract.arc_customers?.company_name || '-'}</td>
+            ${isCustomer ? '' : `<td>${contract.arc_customers?.company_name || '-'}</td>`}
             <td>${formatDate(contract.start_date)}</td>
             <td>${formatDate(contract.end_date)}</td>
             <td>${contract.arc_projects?.length || 0}</td>
@@ -2529,7 +2529,7 @@ async function renderDashboardV2() {
           </tr>
         `;
       }).join('')
-    : '<tr><td colspan="6" style="text-align:center;padding:28px">No contracts yet.</td></tr>';
+    : `<tr><td colspan="${isCustomer ? 5 : 6}" style="text-align:center;padding:28px">No contracts yet.</td></tr>`;
   const cautionContracts = contracts
     .map(contract => {
       const total = contract.total_hours || 0;
@@ -2605,7 +2605,7 @@ async function renderDashboardV2() {
       <div class="dashboard-section-header">${isCustomer ? 'My Contracts' : 'All Contracts'}</div>
       <div class="table-section-body">
         <table class="data-table">
-          <thead><tr><th>Contract</th><th>Customer</th><th>Start Date</th><th>End Date</th><th>Total Projects</th><th>Used Hours</th></tr></thead>
+          <thead><tr><th>Contract</th>${isCustomer ? '' : '<th>Customer</th>'}<th>Start Date</th><th>End Date</th><th>Total Projects</th><th>Used Hours</th></tr></thead>
           <tbody>${contractRows}</tbody>
         </table>
       </div>
@@ -2734,7 +2734,7 @@ async function renderContractDashboard(contractId) {
       <div class="card">
         <div class="card-label">Used Hours</div>
         <div class="card-value">${renderUsageText(`${formatCurrency(usedHours)}h`, isCustomer && isOverLimit)}</div>
-        <div class="card-sub">${renderUsageText(`${usagePercent.toFixed(1)}% used`, isCustomer && isOverLimit)}</div>
+        <div class="card-sub">${renderUsageText(`${rawUsagePercent.toFixed(1)}% used`, isCustomer && isOverLimit)}</div>
       </div>
       <div class="card">
         <div class="card-label">Remaining Hours</div>
@@ -2840,7 +2840,7 @@ async function renderDashboard() {
       `;
 
       if (pctUsed >= 90) {
-      html += `<div class="alert warning show"><strong>High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
+      html += `<div class="alert warning show"><strong>Exceeded Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
       }
     }
 
@@ -4371,7 +4371,7 @@ async function renderMyHours() {
     `;
 
     if (pctUsed >= 90) {
-      html += `<div class="alert warning show ${isOverLimit ? 'renewal-critical' : ''}"><strong>High Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
+      html += `<div class="alert warning show ${isOverLimit ? 'renewal-critical' : ''}"><strong>Exceeded Usage:</strong> You have used ${pctUsed.toFixed(1)}% of your contracted hours.</div>`;
     }
 
     html += '<div class="panel-title" style="margin-top:24px">Time Log History</div><div class="table-wrapper"><table class="data-table time-log-table"><thead><tr><th>Date</th><th>Project</th><th class="detail-col">Description</th><th>Hours</th><th class="detail-col">Comments</th></tr></thead><tbody>';
